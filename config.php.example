@@ -1,0 +1,41 @@
+<?php
+/**
+ * config.php.example
+ *
+ * 範本檔案。每個開發者請：
+ *   1. 複製此檔為 config.php
+ *   2. 填入本機/正式環境的真實值
+ *   3. 永遠不要 commit config.php（已加入 .gitignore）
+ */
+
+// === 資料庫設定 ===
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'ntpc_foodmap');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_CHARSET', 'utf8mb4');
+
+// === Google Maps API ===
+// 後端用 key（鎖 IP）：呼叫 Geocoding / Directions
+define('GOOGLE_MAPS_KEY_BACKEND', 'YOUR_BACKEND_KEY_HERE');
+
+// 前端用 key（鎖 referrer）：載入 Maps JavaScript
+define('GOOGLE_MAPS_KEY_FRONTEND', 'YOUR_FRONTEND_KEY_HERE');
+
+// === Session ===
+define('SESSION_LIFETIME', 86400); // 24 小時
+
+// === 限流設定 ===
+define('RATE_LIMIT_PER_MINUTE', 10);
+define('RATE_LIMIT_PER_DAY', 50);
+
+// === 開發環境（正式環境改為 false） ===
+define('DEBUG_MODE', true);
+
+if (DEBUG_MODE) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(0);
+    ini_set('display_errors', '0');
+}

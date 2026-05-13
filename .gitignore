@@ -1,0 +1,38 @@
+# 環境設定（絕對不能 commit）
+config.php
+.env
+*.env.local
+
+# 日誌
+*.log
+logs/
+
+# 依賴套件
+/vendor/
+node_modules/
+
+# IDE / 編輯器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 作業系統
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 資料庫匯出
+*.sql.bak
+*.dump
+/sql/*.dump
+
+# 暫存
+*.tmp
+*.cache
+/tmp/
+
+# 個人筆記（可選）
+NOTES.md
+TODO.local.md
