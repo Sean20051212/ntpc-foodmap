@@ -14,7 +14,7 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="../assets/js/restaurants.js"></script>
-<script type="text/babel" src="../assets/js/shared.jsx"></script>
+<script type="text/babel" src="../assets/js/shared.jsx?v=2"></script>
 <script type="text/babel">
 const { useState, useMemo, useRef } = React;
 
@@ -76,10 +76,9 @@ function attachDistance(restaurants, userLoc) {
   }));
 }
 
-function filterPool(catSel, distSel, kmSel, userLoc) {
+function filterPool(catSel, kmSel, userLoc) {
   return window.WHEEL_POOL.filter(r => {
     if (catSel !== "不限" && r.cat !== catSel) return false;
-    if (distSel !== "不限" && r.dist !== distSel) return false;
     if (kmSel !== "不限" && userLoc) {
       const max = kmSel === "500m" ? 0.5 : kmSel === "1km" ? 1 : 3;
       const d = haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng);
@@ -92,7 +91,6 @@ function filterPool(catSel, distSel, kmSel, userLoc) {
 function WheelPage() {
   const userLoc = useMemo(() => getUserLocation(), []);
   const [cat, setCat] = useState("不限");
-  const [dist, setDist] = useState("不限");
   const [km, setKm] = useState("不限");
 
   const [candidates, setCandidates] = useState(() =>
@@ -108,7 +106,7 @@ function WheelPage() {
   const wheelRef = useRef(null);
 
   function findCandidates() {
-    const matches = filterPool(cat, dist, km, userLoc);
+    const matches = filterPool(cat, km, userLoc);
     if (matches.length === 0) {
       setWarn("沒有符合條件的餐廳，請放寬條件再試試");
       return;
@@ -170,14 +168,19 @@ function WheelPage() {
         <h1 className="page-title">不知道吃什麼？來轉吧！</h1>
         <p className="page-sub">選幾個條件，把選擇權交給命運的轉盤</p>
 
-        {userLoc && (
-          <p style={{margin: "-18px 0 24px"}}>
+        <p style={{margin: "-18px 0 24px"}}>
+          {userLoc ? (
             <span className="tag">
               <Icon name="mapPin" size={12} style={{verticalAlign: "-1px", marginRight: 4}}/>
               以「{userLoc.address}」為基準計算距離
             </span>
-          </p>
-        )}
+          ) : (
+            <span className="tag tag-green">
+              <Icon name="info" size={12} style={{verticalAlign: "-1px", marginRight: 4}}/>
+              尚未設定地址，距離篩選暫不可用。先到<a href="index.php" style={{color: "inherit", textDecoration: "underline"}}>首頁</a>搜尋
+            </span>
+          )}
+        </p>
 
         <div className="wheel-filter">
           <div className="field">
@@ -188,13 +191,6 @@ function WheelPage() {
             </select>
           </div>
           <div className="field">
-            <label className="label">在哪個區</label>
-            <select className="select" value={dist} onChange={e => setDist(e.target.value)}>
-              <option>不限</option>
-              {window.DISTRICTS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-          <div className="field">
             <label className="label">距離我多遠</label>
             <select className="select" value={km} onChange={e => setKm(e.target.value)} disabled={!userLoc}>
               <option>不限</option>
@@ -202,11 +198,6 @@ function WheelPage() {
               <option>1km</option>
               <option>3km</option>
             </select>
-            {!userLoc && (
-              <div className="field-msg is-hint">
-                先在首頁搜尋地址才能用距離篩選
-              </div>
-            )}
           </div>
           <button className="btn btn-secondary btn-lg" onClick={findCandidates}>
             <Icon name="search" size={16}/> 找出候選餐廳

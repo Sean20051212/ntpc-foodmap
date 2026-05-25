@@ -602,7 +602,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 20px;
   margin-bottom: 32px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr) auto;
+  grid-template-columns: repeat(2, 1fr) auto;
   gap: 14px;
   align-items: end;
 }
