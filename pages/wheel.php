@@ -48,24 +48,56 @@ function shuffle(arr) {
   return a;
 }
 
-function filterPool(catSel, distSel, kmSel) {
+function getUserLocation() {
+  // sessionStorage key written by D's homepage geocode flow: {lat, lng, address}
+  try {
+    const raw = sessionStorage.getItem("userLocation");
+    if (!raw) return null;
+    const loc = JSON.parse(raw);
+    if (typeof loc.lat !== "number" || typeof loc.lng !== "number") return null;
+    return loc;
+  } catch (e) { return null; }
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function attachDistance(restaurants, userLoc) {
+  if (!userLoc) return restaurants;
+  return restaurants.map(r => ({
+    ...r,
+    distanceKm: haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng)
+  }));
+}
+
+function filterPool(catSel, distSel, kmSel, userLoc) {
   return window.WHEEL_POOL.filter(r => {
     if (catSel !== "不限" && r.cat !== catSel) return false;
     if (distSel !== "不限" && r.dist !== distSel) return false;
-    if (kmSel !== "不限") {
+    if (kmSel !== "不限" && userLoc) {
       const max = kmSel === "500m" ? 0.5 : kmSel === "1km" ? 1 : 3;
-      if (r.km > max) return false;
+      const d = haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng);
+      if (d > max) return false;
     }
     return true;
   });
 }
 
 function WheelPage() {
+  const userLoc = useMemo(() => getUserLocation(), []);
   const [cat, setCat] = useState("不限");
   const [dist, setDist] = useState("不限");
   const [km, setKm] = useState("不限");
 
-  const [candidates, setCandidates] = useState(() => shuffle(window.WHEEL_POOL).slice(0, 8));
+  const [candidates, setCandidates] = useState(() =>
+    attachDistance(shuffle(window.WHEEL_POOL).slice(0, 8), userLoc)
+  );
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
@@ -76,7 +108,7 @@ function WheelPage() {
   const wheelRef = useRef(null);
 
   function findCandidates() {
-    const matches = filterPool(cat, dist, km);
+    const matches = filterPool(cat, dist, km, userLoc);
     if (matches.length === 0) {
       setWarn("沒有符合條件的餐廳，請放寬條件再試試");
       return;
@@ -86,10 +118,10 @@ function WheelPage() {
       // still fill 8 slots by repeating
       const filled = [];
       for (let i = 0; i < 8; i++) filled.push(matches[i % matches.length]);
-      setCandidates(shuffle(filled));
+      setCandidates(attachDistance(shuffle(filled), userLoc));
     } else {
       setWarn("");
-      setCandidates(shuffle(matches).slice(0, 8));
+      setCandidates(attachDistance(shuffle(matches).slice(0, 8), userLoc));
     }
     setResult(null);
     setHighlightIdx(-1);
@@ -138,6 +170,15 @@ function WheelPage() {
         <h1 className="page-title">不知道吃什麼？來轉吧！</h1>
         <p className="page-sub">選幾個條件，把選擇權交給命運的轉盤</p>
 
+        {userLoc && (
+          <p style={{margin: "-18px 0 24px"}}>
+            <span className="tag">
+              <Icon name="mapPin" size={12} style={{verticalAlign: "-1px", marginRight: 4}}/>
+              以「{userLoc.address}」為基準計算距離
+            </span>
+          </p>
+        )}
+
         <div className="wheel-filter">
           <div className="field">
             <label className="label">想吃什麼類型</label>
@@ -155,12 +196,17 @@ function WheelPage() {
           </div>
           <div className="field">
             <label className="label">距離我多遠</label>
-            <select className="select" value={km} onChange={e => setKm(e.target.value)}>
+            <select className="select" value={km} onChange={e => setKm(e.target.value)} disabled={!userLoc}>
               <option>不限</option>
               <option>500m</option>
               <option>1km</option>
               <option>3km</option>
             </select>
+            {!userLoc && (
+              <div className="field-msg is-hint">
+                先在首頁搜尋地址才能用距離篩選
+              </div>
+            )}
           </div>
           <button className="btn btn-secondary btn-lg" onClick={findCandidates}>
             <Icon name="search" size={16}/> 找出候選餐廳
@@ -233,7 +279,9 @@ function WheelPage() {
               </div>
               <div className="result-meta">
                 <span className="result-meta-item"><Icon name="mapPin" size={14}/> {result.addr}</span>
-                <span className="result-meta-item"><Icon name="nav" size={14}/> 距離 {result.km} km</span>
+                {result.distanceKm !== undefined && (
+                  <span className="result-meta-item"><Icon name="nav" size={14}/> 距離 {result.distanceKm.toFixed(1)} km</span>
+                )}
               </div>
               <div className="result-actions">
                 <button className="btn btn-secondary">
