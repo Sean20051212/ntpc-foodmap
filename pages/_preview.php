@@ -61,6 +61,7 @@
   <a href="favorites.php" target="_blank">收藏</a>
   <a href="history.php" target="_blank">歷史</a>
   <a href="wheel.php" target="_blank">輪盤</a>
+  <a href="profile.php" target="_blank">個人資料</a>
 </div>
 
 <div id="canvas-root"></div>
@@ -79,7 +80,8 @@ const PAGES = [
   { id: "register",   file: "register.php",   label: "register.php" },
   { id: "favorites",  file: "favorites.php",  label: "favorites.php" },
   { id: "history",    file: "history.php",    label: "history.php" },
-  { id: "wheel",      file: "wheel.php",      label: "wheel.php" }
+  { id: "wheel",      file: "wheel.php",      label: "wheel.php" },
+  { id: "profile",    file: "profile.php",    label: "profile.php" }
 ];
 
 const DESKTOP_W = 1280;
@@ -90,7 +92,8 @@ const HEIGHTS = {
   register:  { d: 820,  m: 880 },
   favorites: { d: 1280, m: 1180 },
   history:   { d: 820,  m: 980 },
-  wheel:     { d: 1340, m: 1320 }
+  wheel:     { d: 1340, m: 1320 },
+  profile:   { d: 720,  m: 760 }
 };
 
 function Frame({ file, w, h }) {

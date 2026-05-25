@@ -91,9 +91,9 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
                   <div className="nav-user-menu-item" style={{color: "var(--color-text-muted)", fontSize: 12}}>
                     已登入帳號
                   </div>
-                  <div className="nav-user-menu-item">
+                  <a href="profile.php" className="nav-user-menu-item">
                     <Icon name="user" size={15}/>個人資料
-                  </div>
+                  </a>
                   <div className="nav-user-menu-item" style={{color: "var(--color-error)"}}>
                     <Icon name="logout" size={15}/>登出
                   </div>
