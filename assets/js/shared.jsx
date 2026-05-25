@@ -91,7 +91,7 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
                   <div className="nav-user-menu-item" style={{color: "var(--color-text-muted)", fontSize: 12}}>
                     已登入帳號
                   </div>
-                  <a href="profile.php" className="nav-user-menu-item">
+                  <a href="profile.php" className="nav-user-menu-item" onClick={(e) => e.stopPropagation()}>
                     <Icon name="user" size={15}/>個人資料
                   </a>
                   <div className="nav-user-menu-item" style={{color: "var(--color-error)"}}>
@@ -125,9 +125,14 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
           ))}
           <div className="nav-mobile-auth">
             {loggedIn ? (
-              <button className="btn btn-outline btn-block">
-                <Icon name="logout" size={16}/>登出 ({userName})
-              </button>
+              <>
+                <a href="profile.php" className="btn btn-outline btn-block">
+                  <Icon name="user" size={16}/>個人資料
+                </a>
+                <button className="btn btn-outline btn-block">
+                  <Icon name="logout" size={16}/>登出 ({userName})
+                </button>
+              </>
             ) : (
               <>
                 <a href="login.php" className="btn btn-outline">登入</a>
