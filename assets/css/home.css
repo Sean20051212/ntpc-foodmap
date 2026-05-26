@@ -14,7 +14,7 @@
 
 /* Sidebar - 餐廳列表區域 */
 .home-sidebar {
-    flex: 0 0 350px;
+    flex: 0 0 380px;
     display: flex;
     flex-direction: column;
     background-color: #fff;
@@ -24,16 +24,26 @@
 
 /* 搜尋欄容器 */
 .home-search-wrapper {
-    display: flex;
-    gap: 8px;
     padding: 16px;
     background-color: #fff;
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
 }
 
+.home-search-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.home-keyword-row {
+    display: flex;
+    gap: 8px;
+}
+
 .home-search-bar {
     flex: 1;
+    min-width: 0;
     padding: 10px 12px;
     border: 1.5px solid var(--color-border);
     border-radius: var(--radius-input);
@@ -54,7 +64,7 @@
 }
 
 .home-search-btn {
-    padding: 10px 16px;
+    padding: 10px 18px;
     background-color: var(--color-primary);
     color: white;
     border: none;
@@ -64,6 +74,66 @@
     transition: background-color 0.15s;
     flex-shrink: 0;
     font-weight: 500;
+}
+
+.home-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.home-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.home-filter-label {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.home-filter-select {
+    width: 100%;
+    min-height: 40px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-input);
+    background-color: #fff;
+    color: var(--color-text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 9px 36px 9px 12px;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+.home-filter-select:hover {
+    border-color: var(--color-border-strong);
+    background-color: #FFFCF8;
+}
+
+.home-filter-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(232, 122, 79, 0.15);
+}
+
+.home-results-summary {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-border);
+    background: #FFFCF8;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .home-search-btn:hover {
@@ -88,7 +158,7 @@
     padding: 16px;
     background-color: #fff;
     border: 1px solid transparent;
-    border-radius: var(--radius-card);
+    border-radius: 8px;
     cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease;
     box-shadow: var(--shadow-card);
@@ -117,7 +187,11 @@
     margin: 0 0 6px;
 }
 
-.home-restaurant-rating {
+.home-restaurant-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     font-size: 13px;
     color: var(--color-text-muted);
     margin: 0;
@@ -198,10 +272,13 @@
 @media (max-width: 768px) {
     .home-container {
         flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - var(--nav-h));
     }
     
     .home-sidebar {
-        flex: 0 0 200px;
+        flex: none;
+        max-height: 420px;
         border-right: none;
         border-bottom: 1px solid var(--color-border);
     }
@@ -214,12 +291,17 @@
 
 @media (max-width: 480px) {
     .home-sidebar {
-        flex: 0 0 160px;
+        max-height: none;
     }
     
-    .home-search-wrapper {
+    .home-keyword-row,
+    .home-filter-grid {
         flex-direction: column;
         gap: 8px;
+    }
+
+    .home-filter-grid {
+        display: flex;
     }
     
     .home-search-btn {
