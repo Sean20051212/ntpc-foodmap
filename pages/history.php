@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>我的歷史紀錄 · 新北食指南</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../assets/css/styles.css"/>
+<link rel="stylesheet" href="../assets/css/styles.css?v=2"/>
 </head>
 <body>
 <div id="root"></div>
@@ -49,7 +49,9 @@ function mapWheel(item) {
     id: `w${item.wheel_id}`,
     time: formatDateTime(item.spun_at),
     name: item.name || `餐廳 #${item.restaurant_id}`,
-    cat: conditions.category || conditions.cat || conditions.district || "輪盤結果",
+    cat: Array.isArray(conditions.categories) && conditions.categories.length > 0
+      ? conditions.categories.join("、")
+      : (conditions.category || conditions.cat || conditions.district || "輪盤結果"),
     restaurantId: item.restaurant_id,
   };
 }
@@ -166,7 +168,7 @@ function HistoryPage() {
                     抽中了「<strong>{item.name}</strong>」<span className="pill">{item.cat}</span>
                   </div>
                 </div>
-                <button className="btn btn-outline btn-sm">查看餐廳 →</button>
+                <a className="btn btn-outline btn-sm" href={`restaurant_detail.php?id=${item.restaurantId}`}>查看餐廳 →</a>
               </div>
             ))}
           </div>

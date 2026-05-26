@@ -65,6 +65,20 @@ Body:
 ### GET /api/auth/me.php
 說明：取得目前登入使用者，未登入回 `401`。
 
+Response:
+```json
+{
+  "ok": true,
+  "data": {
+    "user": {
+      "user_id": 1,
+      "username": "sean_01",
+      "created_at": "2026-05-26 12:00:00"
+    }
+  }
+}
+```
+
 ### GET /api/favorites/list.php
 說明：取得我的收藏，需要登入。
 

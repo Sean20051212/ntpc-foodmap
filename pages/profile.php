@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>個人資料 · 新北食指南</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../assets/css/styles.css"/>
+<link rel="stylesheet" href="../assets/css/styles.css?v=2"/>
 </head>
 <body>
 <div id="root"></div>
@@ -55,6 +55,7 @@ function ProfilePage() {
 
   const displayName = user?.username || "使用者";
   const avatarChar = displayName.slice(0, 1) || "食";
+  const joinedDate = user?.created_at ? formatDateTime(user.created_at).split(" ")[0] : "";
 
   async function logout() {
     try {
@@ -126,6 +127,7 @@ function ProfilePage() {
             <InfoRow label="帳號" value={user.username} mono/>
             <InfoRow label="密碼" value="••••••••"/>
             <InfoRow label="使用者 ID" value={String(user.user_id)} mono/>
+            {joinedDate && <InfoRow label="加入時間" value={joinedDate} mono/>}
           </div>
 
           <div className="warn-banner" style={{
