@@ -1,0 +1,389 @@
+:root {
+  --bg: #f7f2ec;
+  --surface: #fffaf4;
+  --panel: #ffffff;
+  --text: #25211d;
+  --muted: #766d63;
+  --line: #eadfd4;
+  --accent: #e9784f;
+  --accent-dark: #b94f2f;
+  --green: #2f6844;
+  --shadow: 0 18px 45px rgba(73, 56, 40, 0.11);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
+  align-items: center;
+  gap: 24px;
+  height: 64px;
+  padding: 0 clamp(18px, 4vw, 54px);
+  background: rgba(255, 250, 244, 0.96);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand,
+.nav a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.nav a.active {
+  background: #fde7dc;
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.user-menu {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+}
+
+.page {
+  width: min(1120px, calc(100% - 32px));
+  margin: 34px auto 56px;
+}
+
+.restaurant-hero {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 24px;
+  align-items: stretch;
+  padding: clamp(22px, 4vw, 38px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.eyebrow,
+.section-kicker {
+  margin: 0 0 8px;
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 18px;
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.meta-grid span {
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 3px solid #f3c5ae;
+}
+
+.rating-summary {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 190px;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.rating-summary strong {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.stars,
+.score {
+  color: #ef9b2d;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.rating-summary small {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 390px) 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.review-form,
+.reviews-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.review-form {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+  padding: 26px;
+}
+
+.rating-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rating-field legend,
+.field span {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.star-options {
+  display: grid;
+  gap: 8px;
+}
+
+.star-options label {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.star-options input {
+  width: 18px;
+  height: 18px;
+  margin: 0 10px 0 0;
+  accent-color: var(--accent);
+}
+
+.field {
+  display: grid;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 126px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #fffdfa;
+  line-height: 1.6;
+}
+
+textarea:focus {
+  outline: 3px solid #f7c8b2;
+  border-color: var(--accent);
+}
+
+.primary-btn {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reviews-panel {
+  padding: 26px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef6ef;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.review-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.review-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdfa;
+}
+
+.review-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.review-topline div {
+  display: grid;
+  gap: 4px;
+}
+
+.review-topline span:not(.score) {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-card p {
+  margin-bottom: 0;
+  color: #443c34;
+  line-height: 1.7;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: 1fr auto;
+    height: auto;
+    min-height: 60px;
+    padding-block: 12px;
+  }
+
+  .nav {
+    order: 3;
+    grid-column: 1 / -1;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .user-menu {
+    max-width: 150px;
+  }
+
+  .user-menu span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .restaurant-hero,
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rating-summary {
+    min-height: 140px;
+  }
+}

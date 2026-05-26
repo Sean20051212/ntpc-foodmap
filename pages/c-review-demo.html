@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>新北食指南｜評論功能模擬</title>
+  <link rel="stylesheet" href="../assets/css/c-review-demo.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="新北食指南首頁">
+      <span class="brand-mark">食</span>
+      <span>新北食指南</span>
+    </a>
+    <nav class="nav" aria-label="主要導覽">
+      <a href="#">首頁</a>
+      <a href="#">輪盤</a>
+      <a href="#">我的收藏</a>
+      <a class="active" href="#">我的評論</a>
+    </nav>
+    <button class="user-menu" type="button">
+      <span class="avatar">和</span>
+      <span>heping_peace</span>
+    </button>
+  </header>
+
+  <main class="page">
+    <section class="restaurant-hero" aria-labelledby="restaurant-title">
+      <div class="restaurant-main">
+        <p class="eyebrow">餐廳評論</p>
+        <h1 id="restaurant-title">永哥港式點心坊</h1>
+        <div class="meta-grid">
+          <span>新北市231新店區寶安街36號</span>
+          <span>886-2-29132986</span>
+          <span>11:00-14:00 / 17:00-21:00</span>
+          <span>港式</span>
+        </div>
+      </div>
+      <div class="rating-summary" aria-label="評論統計">
+        <strong id="averageRating">5.0</strong>
+        <span class="stars" aria-hidden="true">★★★★★</span>
+        <small id="reviewCount">1 則評論</small>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <form class="review-form" id="reviewForm">
+        <div>
+          <p class="section-kicker">新增評論</p>
+          <h2>留下你的用餐心得</h2>
+        </div>
+
+        <fieldset class="rating-field">
+          <legend>星等</legend>
+          <div class="star-options" role="radiogroup" aria-label="星等">
+            <label><input type="radio" name="rating" value="1"><span>★</span></label>
+            <label><input type="radio" name="rating" value="2"><span>★★</span></label>
+            <label><input type="radio" name="rating" value="3"><span>★★★</span></label>
+            <label><input type="radio" name="rating" value="4"><span>★★★★</span></label>
+            <label><input type="radio" name="rating" value="5" checked><span>★★★★★</span></label>
+          </div>
+        </fieldset>
+
+        <label class="field">
+          <span>評論內容</span>
+          <textarea id="commentInput" maxlength="160" rows="5">燒賣跟黑糖麻糬蛋塔超配，轉寫工熬夜寫 code 完的大餐首選！</textarea>
+        </label>
+
+        <button class="primary-btn" type="submit">送出評論</button>
+      </form>
+
+      <section class="reviews-panel" aria-labelledby="reviews-title">
+        <div class="panel-head">
+          <div>
+            <p class="section-kicker">reviews</p>
+            <h2 id="reviews-title">餐廳評論</h2>
+          </div>
+          <span class="table-chip">reviews</span>
+        </div>
+
+        <div class="review-list" id="reviewList">
+          <article class="review-card">
+            <div class="review-topline">
+              <div>
+                <strong>heping_peace</strong>
+                <span>2026-05-05 12:30:00</span>
+              </div>
+              <span class="score">★★★★★</span>
+            </div>
+            <p>燒賣跟黑糖麻糬蛋塔超配，轉寫工熬夜寫 code 完的大餐首選！</p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="../assets/js/api-client.js"></script>
+  <script src="../assets/js/c-review-demo.js"></script>
+</body>
+</html>
