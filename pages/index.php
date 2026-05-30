@@ -300,7 +300,8 @@ if (!empty($_GET['ajax'])) {
             'distance' => $selectedDistance,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-KRuntm9sB0oU30UkFkHnWiKQahpssNE"></script>
+    <!-- TODO: 將 YOUR_FRONTEND_KEY_HERE 改成 config.php 的 GOOGLE_MAPS_KEY_FRONTEND（鎖 referrer）；切勿直接寫死 key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_FRONTEND_KEY_HERE"></script>
     <script src="../assets/js/map.js"></script>
     <script src="../assets/js/home-php.js"></script>
 </body>
