@@ -1,0 +1,13 @@
+{
+  "name": "ntpc-foodmap-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Node 端工具腳本（資料整理、Google API 補強）。Web 端走 PHP + XAMPP，這個 package.json 只服務 scripts/。",
+  "scripts": {
+    "import-restaurants": "node scripts/import_restaurants.mjs",
+    "enrich-google": "node scripts/enrich_google.mjs"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}
