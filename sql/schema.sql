@@ -306,13 +306,22 @@ INSERT INTO `district_adjacency` (`zipcode_a`, `zipcode_b`) VALUES
 ('251', '252'), -- 淡水 ↔ 三芝
 ('252', '253'); -- 三芝 ↔ 石門
 
--- 4.3 標籤
+-- 4.3 標籤（14 個分類，與 seed.sql 一致）
 INSERT INTO `tags` (`tag_id`, `tag_name`) VALUES
-(1, '港式'),
-(2, '咖啡'),
-(3, '日式'),
-(4, '老街美食'),
-(5, '無菜單料理');
+(1, '小吃／熱炒'),
+(2, '麵食（牛肉麵類）'),
+(3, '中式／合菜'),
+(4, '日式'),
+(5, '海鮮'),
+(6, '火鍋'),
+(7, '燒烤燒肉'),
+(8, '咖啡廳'),
+(9, '烘焙甜點'),
+(10, '冰品飲料'),
+(11, '早午餐'),
+(12, '異國料理'),
+(13, '素食健康'),
+(14, '其他／伴手禮');
 
 -- 4.4 使用者（user_id=1 為管理員）
 INSERT INTO `users` (`user_id`, `username`, `password_hash`, `is_admin`, `created_at`, `updated_at`) VALUES
@@ -355,13 +364,11 @@ INSERT INTO `opentime` (`restaurant_id`, `day`, `start_time`, `end_time`, `spec_
 (3, 2, '13:30:00', '14:00:00', '週一公休、關店前半小時不接客'),
 (3, 2, '17:00:00', '21:00:00', '週一公休、關店前半小時不接客');
 
--- 4.9 餐廳貼標籤
+-- 4.9 餐廳貼標籤（對應新 14 分類）
 INSERT INTO `restaurant_tags_mapping` (`restaurant_id`, `tag_id`) VALUES
-(1, 1), -- 永哥 -> 港式
-(2, 2), -- MATTER -> 咖啡
-(3, 3), -- 壽司屋 -> 日式
-(3, 4), -- 壽司屋 -> 老街美食
-(3, 5); -- 壽司屋 -> 無菜單料理
+(1, 3), -- 永哥 -> 中式／合菜
+(2, 8), -- MATTER -> 咖啡廳
+(3, 4); -- 壽司屋 -> 日式
 
 -- 4.10 收藏
 INSERT INTO `favorites` (`user_id`, `restaurant_id`, `created_at`) VALUES
