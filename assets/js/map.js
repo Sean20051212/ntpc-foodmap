@@ -120,6 +120,11 @@ class MapManager {
             console.error('找不到 #map 元素');
             return;
         }
+
+        if (!window.google?.maps) {
+            console.error('Google Maps API is not loaded.');
+            return;
+        }
         
         const center = {
             lat: this.userLocation.lat,
@@ -278,5 +283,70 @@ class MapManager {
 let mapManager;
 
 document.addEventListener('DOMContentLoaded', () => {
-    mapManager = new MapManager();
+    loadGoogleMapsApi()
+        .then(() => {
+            mapManager = new MapManager();
+            if (Array.isArray(window.restaurantsData)) {
+                mapManager.addMultipleMarkers(window.restaurantsData);
+            }
+        })
+        .catch((error) => {
+            showMapConfigError(error.message);
+            console.error(error);
+        });
 });
+
+function getGoogleMapsApiKey() {
+    return String(window.GOOGLE_MAPS_API_KEY || '').trim();
+}
+
+function loadGoogleMapsApi() {
+    if (window.google?.maps) {
+        return Promise.resolve();
+    }
+
+    const apiKey = getGoogleMapsApiKey();
+    if (!apiKey || apiKey === 'REPLACE_ME') {
+        return Promise.reject(new Error('Google Maps API key is not configured.'));
+    }
+
+    const existingScript = document.querySelector('script[data-google-maps-api]');
+    if (existingScript) {
+        return new Promise((resolve, reject) => {
+            existingScript.addEventListener('load', resolve, { once: true });
+            existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps API.')), { once: true });
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleMapsApi = 'true';
+        script.addEventListener('load', resolve, { once: true });
+        script.addEventListener('error', () => reject(new Error('Failed to load Google Maps API.')), { once: true });
+        document.head.appendChild(script);
+    });
+}
+
+function showMapConfigError(message) {
+    const mapElement = document.getElementById('map');
+    if (!mapElement) return;
+
+    mapElement.innerHTML = `
+        <div class="home-map-placeholder">
+            <div class="home-map-placeholder-text">${escapeHtml(message)}</div>
+        </div>
+    `;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[char]));
+}

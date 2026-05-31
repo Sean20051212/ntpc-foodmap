@@ -300,7 +300,7 @@ if (!empty($_GET['ajax'])) {
             'distance' => $selectedDistance,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-KRuntm9sB0oU30UkFkHnWiKQahpssNE"></script>
+    <script src="../assets/js/config.js"></script>
     <script src="../assets/js/map.js"></script>
     <script src="../assets/js/home-php.js"></script>
 </body>

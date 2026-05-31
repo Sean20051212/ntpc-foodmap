@@ -38,3 +38,5 @@ NOTES.md
 TODO.local.md
 private/
 todo*.md
+#api
+assets/js/config.js
