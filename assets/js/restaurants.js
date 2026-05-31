@@ -30,26 +30,26 @@ window.RESTAURANTS = [
 /* For wheel page — broader pool with district + category.
    lng/lat 為各餐廳座標，距離由 wheel.php 用 Haversine 即時計算（讀 sessionStorage 的 userLocation）。*/
 window.WHEEL_POOL = [
-  { name: "鼎泰豐", cat: "中式料理", dist: "板橋區", lng: 121.4678, lat: 25.0220, addr: "新站路28號B1" },
-  { name: "大紅袍麻辣鍋", cat: "鍋物", dist: "新店區", lng: 121.5421, lat: 24.9826, addr: "中興路三段1-8號" },
-  { name: "壽司屋", cat: "日式料理", dist: "淡水區", lng: 121.4441, lat: 25.1684, addr: "公明街87號" },
-  { name: "Gino Pizza", cat: "西式料理", dist: "蘆洲區", lng: 121.4737, lat: 25.0858, addr: "長安街108巷27號" },
-  { name: "大胖子豆腐冰淇淋", cat: "甜點", dist: "深坑區", lng: 121.6155, lat: 24.9970, addr: "深坑街62號" },
-  { name: "萬香烤鴨", cat: "中式料理", dist: "板橋區", lng: 121.4690, lat: 25.0210, addr: "忠孝路116號" },
-  { name: "阿婆魚羹", cat: "台式小吃", dist: "瑞芳區", lng: 121.8101, lat: 25.1086, addr: "基山街9號" },
-  { name: "三隻小豬早餐", cat: "早午餐", dist: "板橋區", lng: 121.4665, lat: 25.0235, addr: "後埔街54號" },
-  { name: "清真雲南小吃", cat: "異國料理", dist: "中和區", lng: 121.4995, lat: 25.0066, addr: "華新街62號" },
-  { name: "老爹滷味", cat: "台式小吃", dist: "永和區", lng: 121.5147, lat: 25.0070, addr: "福和路326號" },
-  { name: "玉麵堂", cat: "中式料理", dist: "新店區", lng: 121.5430, lat: 24.9810, addr: "中華路113號" },
-  { name: "翡翠谷飲食店", cat: "山產料理", dist: "烏來區", lng: 121.5511, lat: 24.8651, addr: "烏來街26-28號" },
-  { name: "金山長益餅店", cat: "甜點", dist: "金山區", lng: 121.6362, lat: 25.2196, addr: "金包里街57號" },
-  { name: "蘇義興餐廳", cat: "台菜", dist: "雙溪區", lng: 121.8651, lat: 25.0376, addr: "中華路77號" },
-  { name: "大團圓餐廳", cat: "台菜", dist: "深坑區", lng: 121.6170, lat: 24.9985, addr: "阿柔里25-1號" },
-  { name: "登峰魚丸博物館", cat: "台式小吃", dist: "淡水區", lng: 121.4452, lat: 25.1675, addr: "中正路117號" },
-  { name: "宜安路麵線", cat: "台式小吃", dist: "中和區", lng: 121.5012, lat: 25.0050, addr: "宜安路117號" },
-  { name: "老楊煎包", cat: "早午餐", dist: "新店區", lng: 121.5450, lat: 24.9800, addr: "中興路一段112號" },
-  { name: "廣泰香西點麵包", cat: "甜點", dist: "淡水區", lng: 121.4435, lat: 25.1695, addr: "淡金路三段347號" },
-  { name: "美養莊園餐飲", cat: "西式料理", dist: "新店區", lng: 121.5400, lat: 24.9840, addr: "二十張路11巷1-1號" }
+  { name: "鼎泰豐", cat: "中式料理", dist: "板橋區", lng: 121.4678, lat: 25.0220, rating: 4.3, addr: "新站路28號B1" },
+  { name: "大紅袍麻辣鍋", cat: "鍋物", dist: "新店區", lng: 121.5421, lat: 24.9826, rating: 4.5, addr: "中興路三段1-8號" },
+  { name: "壽司屋", cat: "日式料理", dist: "淡水區", lng: 121.4441, lat: 25.1684, rating: 3.5, addr: "公明街87號" },
+  { name: "Gino Pizza", cat: "西式料理", dist: "蘆洲區", lng: 121.4737, lat: 25.0858, rating: 3.4, addr: "長安街108巷27號" },
+  { name: "大胖子豆腐冰淇淋", cat: "甜點", dist: "深坑區", lng: 121.6155, lat: 24.9970, rating: 4.6, addr: "深坑街62號" },
+  { name: "萬香烤鴨", cat: "中式料理", dist: "板橋區", lng: 121.4690, lat: 25.0210, rating: 4.4, addr: "忠孝路116號" },
+  { name: "阿婆魚羹", cat: "台式小吃", dist: "瑞芳區", lng: 121.8101, lat: 25.1086, rating: 4.7, addr: "基山街9號" },
+  { name: "三隻小豬早餐", cat: "早午餐", dist: "板橋區", lng: 121.4665, lat: 25.0235, rating: 4.9, addr: "後埔街54號" },
+  { name: "清真雲南小吃", cat: "異國料理", dist: "中和區", lng: 121.4995, lat: 25.0066, rating: 3.4, addr: "華新街62號" },
+  { name: "老爹滷味", cat: "台式小吃", dist: "永和區", lng: 121.5147, lat: 25.0070, rating: 3.5, addr: "福和路326號" },
+  { name: "玉麵堂", cat: "中式料理", dist: "新店區", lng: 121.5430, lat: 24.9810, rating: 3.7, addr: "中華路113號" },
+  { name: "翡翠谷飲食店", cat: "山產料理", dist: "烏來區", lng: 121.5511, lat: 24.8651, rating: 4.1, addr: "烏來街26-28號" },
+  { name: "金山長益餅店", cat: "甜點", dist: "金山區", lng: 121.6362, lat: 25.2196, rating: 3.6, addr: "金包里街57號" },
+  { name: "蘇義興餐廳", cat: "台菜", dist: "雙溪區", lng: 121.8651, lat: 25.0376, rating: 4.4, addr: "中華路77號" },
+  { name: "大團圓餐廳", cat: "台菜", dist: "深坑區", lng: 121.6170, lat: 24.9985, rating: 4.0, addr: "阿柔里25-1號" },
+  { name: "登峰魚丸博物館", cat: "台式小吃", dist: "淡水區", lng: 121.4452, lat: 25.1675, rating: 4.5, addr: "中正路117號" },
+  { name: "宜安路麵線", cat: "台式小吃", dist: "中和區", lng: 121.5012, lat: 25.0050, rating: 3.4, addr: "宜安路117號" },
+  { name: "老楊煎包", cat: "早午餐", dist: "新店區", lng: 121.5450, lat: 24.9800, rating: 3.7, addr: "中興路一段112號" },
+  { name: "廣泰香西點麵包", cat: "甜點", dist: "淡水區", lng: 121.4435, lat: 25.1695, rating: 4.0, addr: "淡金路三段347號" },
+  { name: "美養莊園餐飲", cat: "西式料理", dist: "新店區", lng: 121.5400, lat: 24.9840, rating: 4.5, addr: "二十張路11巷1-1號" }
 ];
 
 window.DISTRICTS = [

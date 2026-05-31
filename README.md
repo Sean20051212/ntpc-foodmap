@@ -11,7 +11,7 @@
 - **技術棧**：PHP 8.x + MySQL 8.x + 原生 HTML/CSS/JS + Google Maps API
 - **開發環境**：XAMPP（Windows）
 - **部署**：免費 PHP host（InfinityFree 或校內主機）
-- **資料庫**：10 張表，完全符合 3NF
+- **資料庫**：11 張表（users / districts / district_adjacency / restaurants / restaurant_phones / restaurant_photos / opentime / tags / restaurant_tags_mapping / reviews / favorites）+ 觸發器自動維護 `rating_avg` / `rating_count`
 - **詳細規格**：見 `docs/` 資料夾
 
 ---
@@ -46,14 +46,21 @@ git clone https://github.com/[YOUR_ORG]/ntpc-foodmap.git
 cd ntpc-foodmap
 ```
 
-### 3. 設定 config.php
+### 3. 設定設定檔與環境變數
+
+本專案有兩份設定檔，**兩份都在 `.gitignore` 內，永遠不會被 commit**：
 
 ```bash
-# 把範本複製成正式設定檔
+# config.php：PHP 端讀取的主要設定（DB / API key / Session / 限流）
 copy config.php.example config.php
+
+# .env：備用 / 未來改用 vlucas/phpdotenv 時用，目前 PHP 不會自動讀
+# 若已存在請略過；專案根目錄會有一份範例（DB / Google key / DEBUG_MODE）
 ```
 
-打開 `config.php`，填入你本機的 DB 帳密與 Google Maps API key。**這支檔案已加入 `.gitignore`，永遠不會被 commit**。
+打開 `config.php`，填入：
+- 本機 DB 帳密（XAMPP 預設 `root` / 無密碼）
+- Google Maps API key（Geocoding API / Places API (New) / Maps JavaScript API 共用同一把 key，但建議在 GCP Console 分「鎖 IP（後端）」「鎖 referrer（前端）」兩把）
 
 ### 4. 建立資料庫
 
@@ -63,16 +70,24 @@ copy config.php.example config.php
 CREATE DATABASE ntpc_foodmap DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-匯入 schema 與初始資料（A 提供後）：
+匯入完整資料庫（一份檔案搞定，schema + 觸發器 + 所有資料）：
 
 ```bash
-# 在 XAMPP 的 mysql/bin 下執行
-mysql -u root ntpc_foodmap < sql/schema.sql
-mysql -u root ntpc_foodmap < sql/seed_districts.sql
-mysql -u root ntpc_foodmap < sql/seed_dict.sql
-php sql/import.php       # 匯入餐廳資料
-php sql/classify.php     # 跑分類腳本
+# 在 XAMPP 的 mysql/bin 下執行（或用 phpMyAdmin 介面匯入 sql/database.sql）
+mysql -u root ntpc_foodmap < sql/database.sql
 ```
+
+`sql/database.sql` 是用 `mysqldump` 從已補強的本機 DB 匯出的快照，包含：
+- 11 張表結構 + 3 個觸發器
+- 29 區 + 46 條鄰接 + 14 個分類
+- 約 690 筆真實餐廳（已用 Google Places API 補上 `google_place_id`、`price_level`、每店多 5 張照片）
+
+> 若要從原始 CSV 重新產生資料庫，需要先有 `restaurants.csv`（未進 git）+ 跑：
+> ```bash
+> node scripts/import_restaurants.mjs   # 從 CSV 產出 sql/seed.sql（已過時）
+> node scripts/enrich_google.mjs        # 用 Google API 補強
+> ```
+> 一般情況直接用 `database.sql` 即可。
 
 ### 5. 放進 XAMPP 並開啟
 
@@ -84,7 +99,7 @@ php sql/classify.php     # 跑分類腳本
 
 ```
 ntpc-foodmap/
-├── api/                  # 後端 PHP API
+├── api/                  # 後端 PHP API（⚠️ 目前都是空的 .gitkeep，尚未實作）
 │   ├── auth/             # 註冊登入登出（C）
 │   ├── favorites/        # 收藏（C）
 │   ├── reviews/          # 評論（C）
@@ -95,23 +110,33 @@ ntpc-foodmap/
 ├── assets/
 │   ├── js/               # 前端 JavaScript（D、E）
 │   └── css/              # 樣式表（D、E）
-├── pages/                # 前端頁面（D、E）
-├── lib/                  # 共用 PHP（C）
-│   ├── db.php            # PDO 連線
-│   ├── auth_check.php    # 登入驗證
-│   └── rate_limit.php    # API 限流（D）
-├── sql/                  # SQL 與匯入腳本（A）
-│   ├── schema.sql
-│   ├── seed_dict.sql
-│   ├── seed_districts.sql
-│   ├── import.php
-│   └── classify.php
+├── pages/                # 前端頁面（D、E）— 目前多數頁仍用 mock data
+├── lib/                  # 共用 PHP（C）— ⚠️ 尚未實作（待寫 db.php / auth.php / response.php / rate_limit.php）
+├── sql/
+│   ├── schema.sql        # 11 張表 + 觸發器 + 29 區/46 鄰接/14 分類的 seed
+│   └── seed.sql          # 693 筆真實餐廳資料（由 import_restaurants.mjs 產生）
+├── scripts/
+│   └── import_restaurants.mjs   # 讀 restaurants.csv → 產出 sql/seed.sql
+├── data/                 # （未提交）資料整理工作目錄
+├── restaurants.csv       # （未提交）699 筆原始整合資料，保留待 Google API 補強
 ├── docs/                 # 文件、規格、簡報
 ├── config.php            # （不在 Git 中，本機自建）
 ├── config.php.example    # 設定檔範本
+├── .env                  # （不在 Git 中）備用環境變數
 ├── .gitignore
 └── README.md
 ```
+
+### 目前實作狀態
+
+| 區塊 | 狀態 |
+|---|---|
+| `sql/schema.sql` + `sql/seed.sql` | ✅ 完成，可直接 import |
+| `pages/*.php` 前端頁 | 🟡 UI 完成，但 **資料是寫死的 mock data**，未串 DB |
+| `pages/login.php` | ⚠️ 假登入（任何密碼都會過），**上線前必須換掉** |
+| `api/**/*.php` 後端 API | ❌ 尚未實作 |
+| `lib/*.php` 共用模組 | ❌ 尚未實作（`config.php` 還只是定義常數，沒有 DB 連線函式） |
+| Google Maps API 串接 | ❌ `pages/index.php` 還是 `YOUR_FRONTEND_KEY_HERE` placeholder |
 
 ---
 
@@ -202,12 +227,14 @@ git push
 | force push（`git push -f`） | 蓋掉別人的提交 | 永遠不要對共用 branch 用 |
 | 大檔案塞進 repo | 整個 repo 變慢 | DB 匯出檔放 Google Drive 分享連結 |
 
-**萬一不小心 commit 了 `config.php`**：
+**萬一不小心 commit 了 `config.php` 或 `.env`**：
 
-1. 立刻把 Google Maps API key 在 GCP Console 刪掉、重新申請
+1. 立刻把 Google Maps API key 在 GCP Console 刪掉、重新申請（Git 歷史清不乾淨，key 已外洩）
 2. 改 DB 密碼
 3. 通知所有組員不要 pull 那個 commit
 4. 由負責人處理 Git 歷史清除（用 `git filter-branch` 或 BFG Repo-Cleaner）
+
+> 過去曾發生組員在 `pages/index.php` 寫死 Google Maps key 後 commit；現已改回 `YOUR_FRONTEND_KEY_HERE` placeholder。前端載入 key 的正規做法：從 `config.php` 讀 `GOOGLE_MAPS_KEY_FRONTEND` 後 echo 進 script src。
 
 ---
 

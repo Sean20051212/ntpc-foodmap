@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>不知道吃什麼？來轉吧 · 新北食指南</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../assets/css/styles.css"/>
+<link rel="stylesheet" href="../assets/css/styles.css?v=2"/>
 </head>
 <body>
 <div id="root"></div>
@@ -13,7 +13,7 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script src="../assets/js/restaurants.js"></script>
+<script src="../assets/js/restaurants.js?v=2"></script>
 <script type="text/babel" src="../assets/js/shared.jsx?v=2"></script>
 <script type="text/babel">
 const { useState, useMemo, useRef } = React;
@@ -76,9 +76,10 @@ function attachDistance(restaurants, userLoc) {
   }));
 }
 
-function filterPool(catSel, kmSel, userLoc) {
+function filterPool(catSet, kmSel, ratingMin, userLoc) {
   return window.WHEEL_POOL.filter(r => {
-    if (catSel !== "不限" && r.cat !== catSel) return false;
+    if (catSet.size > 0 && !catSet.has(r.cat)) return false;
+    if (ratingMin > 0 && (r.rating || 0) < ratingMin) return false;
     if (kmSel !== "不限" && userLoc) {
       const max = kmSel === "500m" ? 0.5 : kmSel === "1km" ? 1 : 3;
       const d = haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng);
@@ -88,25 +89,104 @@ function filterPool(catSel, kmSel, userLoc) {
   });
 }
 
+const RATING_OPTIONS = [
+  { label: "不限", value: 0 },
+  { label: "兩星以上", value: 2 },
+  { label: "三星以上", value: 3 },
+  { label: "四星以上", value: 4 }
+];
+
+function MultiSelectCategories({ options, value, onChange, placeholder = "不限（全部類型）" }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    function onDoc(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  function toggle(opt) {
+    const next = new Set(value);
+    if (next.has(opt)) next.delete(opt); else next.add(opt);
+    onChange(next);
+  }
+  function clear() { onChange(new Set()); }
+  function selectAll() { onChange(new Set(options)); }
+
+  const arr = Array.from(value);
+  const isEmpty = arr.length === 0;
+  const shown = arr.slice(0, 2);
+  const extra = arr.length - shown.length;
+
+  return (
+    <div className="multiselect" ref={ref}>
+      <button type="button"
+              className={"multiselect-trigger" + (open ? " is-open" : "")}
+              onClick={() => setOpen(o => !o)}
+              aria-expanded={open}>
+        {isEmpty ? (
+          <span className="multiselect-placeholder">{placeholder}</span>
+        ) : (
+          <>
+            {shown.map(c => <span className="multiselect-chip" key={c}>{c}</span>)}
+            {extra > 0 && <span className="multiselect-chip-more">+{extra}</span>}
+          </>
+        )}
+      </button>
+      {open && (
+        <div className="multiselect-panel" role="listbox">
+          <div className="multiselect-toolbar">
+            <span>已選 {arr.length} / {options.length}</span>
+            <div style={{display: "flex", gap: 12}}>
+              <button type="button" onClick={selectAll}>全選</button>
+              <button type="button" onClick={clear} style={{color: "var(--color-text-muted)"}}>清空</button>
+            </div>
+          </div>
+          {options.map(opt => (
+            <label className="multiselect-option" key={opt}>
+              <input type="checkbox"
+                     checked={value.has(opt)}
+                     onChange={() => toggle(opt)}/>
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WheelPage() {
   const userLoc = useMemo(() => getUserLocation(), []);
-  const [cat, setCat] = useState("不限");
+  const [cats, setCats] = useState(() => new Set());
+  const [ratingMin, setRatingMin] = useState(0);
   const [km, setKm] = useState("不限");
 
   const [candidates, setCandidates] = useState(() =>
     attachDistance(shuffle(window.WHEEL_POOL).slice(0, 8), userLoc)
   );
   const [spinning, setSpinning] = useState(false);
+  const [cooling, setCooling] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const [favorited, setFavorited] = useState(false);
   const [warn, setWarn] = useState("");
+  const [spunHistory, setSpunHistory] = useState([]); // array of restaurant objects
+  const [excludeSpun, setExcludeSpun] = useState(false);
 
   const wheelRef = useRef(null);
+  const spinIdRef = useRef(0);
 
   function findCandidates() {
-    const matches = filterPool(cat, km, userLoc);
+    let matches = filterPool(cats, km, ratingMin, userLoc);
+    if (excludeSpun && spunHistory.length > 0) {
+      const seen = new Set(spunHistory.map(r => r.name));
+      matches = matches.filter(r => !seen.has(r.name));
+    }
     if (matches.length === 0) {
       setWarn("沒有符合條件的餐廳，請放寬條件再試試");
       return;
@@ -128,6 +208,7 @@ function WheelPage() {
 
   function spin() {
     if (spinning || candidates.length < 8) return;
+    const mySpinId = ++spinIdRef.current;
     setResult(null);
     setHighlightIdx(-1);
     setFavorited(false);
@@ -150,10 +231,56 @@ function WheelPage() {
 
     setTimeout(() => {
       setSpinning(false);
+      // Lock spin buttons during the 1.2s highlight + replenish window so
+      // user can't trigger a new spin before auto-replenish completes
+      setCooling(true);
       setHighlightIdx(winner);
-      setResult(candidates[winner]);
-      // pulse highlight
-      setTimeout(() => setHighlightIdx(-1), 1200);
+      const won = candidates[winner];
+      setResult(won);
+      // Add to history (keep most-recent first, dedupe by name, cap at 30)
+      const nextHistory = [won, ...spunHistory.filter(r => r.name !== won.name)].slice(0, 30);
+      setSpunHistory(nextHistory);
+
+      setTimeout(() => {
+        // Always release the cooling lock, even if a stale spin (defensive)
+        setCooling(false);
+        if (spinIdRef.current !== mySpinId) return;
+        setHighlightIdx(-1);
+        // Auto-replenish winner slot when 「排除抽取過餐廳」 toggle is on
+        if (excludeSpun) {
+          const pool = filterPool(cats, km, ratingMin, userLoc);
+          const historyNames = new Set(nextHistory.map(r => r.name));
+          const seen = new Set([...historyNames, ...candidates.map(c => c.name)]);
+          // Strict: not in history AND not on current wheel
+          let eligible = pool.filter(r => !seen.has(r.name));
+          // Fallback: still skip history strictly, but allow duplicates with current wheel
+          // (won't resurrect any spun restaurant)
+          if (eligible.length === 0) {
+            eligible = pool.filter(r => !historyNames.has(r.name));
+          }
+          // If still empty → pool is entirely consumed by history; leave slot as-is.
+          // User can 清空紀錄 or 放寬篩選 to recover.
+          if (eligible.length > 0) {
+            // Shuffle eligible so each duplicate slot gets a (preferably) different pick.
+            // If duplicates > eligible.length, wrap with modulo (unavoidable when pool is tiny).
+            const shuffled = shuffle(eligible);
+            setCandidates(prev => {
+              const next = prev.slice();
+              let pickIdx = 0;
+              for (let i = 0; i < next.length; i++) {
+                if (next[i].name === won.name) {
+                  const pick = shuffled[pickIdx % shuffled.length];
+                  next[i] = userLoc
+                    ? { ...pick, distanceKm: haversineKm(userLoc.lat, userLoc.lng, pick.lat, pick.lng) }
+                    : pick;
+                  pickIdx++;
+                }
+              }
+              return next;
+            });
+          }
+        }
+      }, 1200);
     }, 4050);
   }
 
@@ -185,9 +312,18 @@ function WheelPage() {
         <div className="wheel-filter">
           <div className="field">
             <label className="label">想吃什麼類型</label>
-            <select className="select" value={cat} onChange={e => setCat(e.target.value)}>
-              <option>不限</option>
-              {window.CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            <MultiSelectCategories
+              options={window.CATEGORIES}
+              value={cats}
+              onChange={setCats}
+            />
+          </div>
+          <div className="field">
+            <label className="label">評分</label>
+            <select className="select" value={ratingMin} onChange={e => setRatingMin(Number(e.target.value))}>
+              {RATING_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </select>
           </div>
           <div className="field">
@@ -210,7 +346,76 @@ function WheelPage() {
           </div>
         )}
 
-        <div className="wheel-stage">
+        <div className="wheel-layout">
+          <aside className="wheel-side">
+            <button
+              type="button"
+              className={"wheel-side-toggle" + (excludeSpun ? " is-on" : "")}
+              onClick={() => setExcludeSpun(v => !v)}
+              aria-pressed={excludeSpun}
+            >
+              <span style={{display: "flex", alignItems: "center", gap: 8}}>
+                <Icon name="refresh" size={15}/>
+                排除抽取過餐廳
+              </span>
+              <span className="switch" aria-hidden="true"/>
+            </button>
+
+            <div className="wheel-side-head">
+              <h3 className="wheel-side-title">已抽取餐廳</h3>
+              <span className="wheel-side-count">{spunHistory.length}</span>
+            </div>
+
+            {spunHistory.length === 0 ? (
+              <div className="wheel-side-empty">
+                <Icon name="history" size={28} stroke={1.5}/>
+                <div>還沒有抽中任何餐廳</div>
+                <div style={{fontSize: 12, marginTop: 4}}>轉動輪盤後會記錄在這裡</div>
+              </div>
+            ) : (
+              <>
+                <div style={{display: "flex", justifyContent: "flex-end", marginBottom: 6}}>
+                  <button className="wheel-side-clear" onClick={() => setSpunHistory([])}>
+                    清空紀錄
+                  </button>
+                </div>
+                <div className="wheel-side-list">
+                  {spunHistory.map(r => (
+                    <article className="rcard is-mini" key={r.name}>
+                      <span className="tag">{r.cat}</span>
+                      <h4 className="rcard-name">{r.name}</h4>
+                      <div className="rcard-meta">
+                        <div className="rcard-meta-row is-clamp">
+                          <Icon name="mapPin" size={13}/>
+                          <span>{r.dist} · {r.addr}</span>
+                        </div>
+                        {r.rating !== undefined && (
+                          <div className="rcard-meta-row">
+                            <Icon name="sparkle" size={13}/>
+                            <span>評分 {r.rating.toFixed(1)} / 5.0</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="rcard-foot">
+                        <button
+                          className="heart-btn"
+                          aria-label="從紀錄移除"
+                          title="從紀錄移除"
+                          onClick={() => setSpunHistory(prev => prev.filter(x => x.name !== r.name))}
+                          style={{color: "var(--color-text-muted)"}}
+                        >
+                          <Icon name="close" size={18}/>
+                        </button>
+                        <button className="btn btn-outline btn-sm">查看詳情 →</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </aside>
+
+          <div className="wheel-stage">
           <div className="wheel-wrap">
             <div className="wheel-pointer"/>
             <svg className="wheel-svg" ref={wheelRef}
@@ -255,7 +460,7 @@ function WheelPage() {
               })}
               <circle cx={CX} cy={CY} r="44" fill="#fff" stroke="#FBE5DA" strokeWidth="2"/>
             </svg>
-            <button className="wheel-spin-btn" onClick={spin} disabled={spinning || candidates.length < 8}>
+            <button className="wheel-spin-btn" onClick={spin} disabled={spinning || cooling || candidates.length < 8}>
               {spinning ? "轉動中…" : "轉動！"}
             </button>
           </div>
@@ -267,6 +472,11 @@ function WheelPage() {
               <div style={{display: "flex", justifyContent: "center", gap: 8, marginBottom: 14, flexWrap: "wrap"}}>
                 <span className="tag">{result.cat}</span>
                 <span className="tag tag-green">{result.dist}</span>
+                {result.rating !== undefined && (
+                  <span className="tag" style={{background: "#FFF4DA", color: "#A06A12"}}>
+                    ★ {result.rating.toFixed(1)}
+                  </span>
+                )}
               </div>
               <div className="result-meta">
                 <span className="result-meta-item"><Icon name="mapPin" size={14}/> {result.addr}</span>
@@ -287,7 +497,7 @@ function WheelPage() {
                         style={{ fill: favorited ? "currentColor" : "none" }}/>
                   {favorited ? "已收藏" : "收藏"}
                 </button>
-                <button className="btn btn-outline" onClick={spinAgain} disabled={spinning}>
+                <button className="btn btn-outline" onClick={spinAgain} disabled={spinning || cooling}>
                   <Icon name="refresh" size={16}/> 再轉一次
                 </button>
               </div>
@@ -299,6 +509,7 @@ function WheelPage() {
               準備好就按下中間的「轉動！」鍵吧 ✨
             </p>
           )}
+        </div>
         </div>
       </main>
       <Footer/>
