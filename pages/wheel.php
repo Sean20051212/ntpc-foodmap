@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>不知道吃什麼？來轉吧 · 新北食指南</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../assets/css/styles.css?v=2"/>
+<link rel="stylesheet" href="../assets/css/styles.css?v=3"/>
 </head>
 <body>
 <div id="root"></div>
@@ -14,7 +14,7 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="../assets/js/restaurants.js?v=2"></script>
-<script type="text/babel" src="../assets/js/shared.jsx?v=2"></script>
+<script type="text/babel" src="../assets/js/shared.jsx?v=3"></script>
 <script type="text/babel">
 const { useState, useMemo, useRef } = React;
 

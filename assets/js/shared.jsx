@@ -1,10 +1,7 @@
-/* shared.jsx — Nav, Footer, Icons used across all pages.
-   Loaded via <script type="text/babel" src="shared.jsx"></script>
-   Exposes globals on window so per-page scripts can use them. */
+/* shared.jsx: Nav, Footer, Icons used across React pages. */
 
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef } = React;
 
-/* ---------- Icons ---------- */
 const Icon = ({ name, size = 18, stroke = 2, className = "", style }) => {
   const paths = {
     chopsticks: <g><path d="M5 20 L19 6"/><path d="M5 14 L13 6"/><path d="M3 22 L7 18"/></g>,
@@ -28,6 +25,7 @@ const Icon = ({ name, size = 18, stroke = 2, className = "", style }) => {
     info: <g><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></g>,
     error: <g><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></g>
   };
+
   return (
     <svg
       width={size} height={size} viewBox="0 0 24 24"
@@ -41,18 +39,53 @@ const Icon = ({ name, size = 18, stroke = 2, className = "", style }) => {
   );
 };
 
-/* ---------- Nav ---------- */
 const NAV_LINKS = [
   { href: "index.php", label: "首頁", key: "home", icon: "home" },
-  { href: "wheel.php", label: "輪盤", key: "wheel", icon: "target" },
-  { href: "favorites.php", label: "我的收藏", key: "favorites", icon: "heart" },
-  { href: "history.php", label: "我的歷史", key: "history", icon: "history" }
+  { href: "wheel.php", label: "轉盤", key: "wheel", icon: "target" },
+  { href: "favorites.php", label: "收藏", key: "favorites", icon: "heart" },
+  { href: "history.php", label: "紀錄", key: "history", icon: "history" }
 ];
 
-function Nav({ active, loggedIn = true, userName = "陳小美" }) {
+async function defaultLogout() {
+  try {
+    await fetch("../api/auth/logout.php", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+  } finally {
+    sessionStorage.removeItem("userLocation");
+    window.location.href = "login.php";
+  }
+}
+
+function Nav({ active, loggedIn = null, userName = "", onLogout = defaultLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoaded, setAuthLoaded] = useState(loggedIn !== null);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (loggedIn !== null) return;
+
+    let cancelled = false;
+    async function loadCurrentUser() {
+      try {
+        const res = await fetch("../api/auth/me.php", { credentials: "same-origin" });
+        const payload = await res.json();
+        if (!cancelled && payload.ok) {
+          setCurrentUser(payload.data.user);
+        }
+      } catch (error) {
+        if (!cancelled) setCurrentUser(null);
+      } finally {
+        if (!cancelled) setAuthLoaded(true);
+      }
+    }
+
+    loadCurrentUser();
+    return () => { cancelled = true; };
+  }, [loggedIn]);
 
   useEffect(() => {
     function onClick(e) {
@@ -62,12 +95,16 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
     return () => document.removeEventListener("click", onClick);
   }, []);
 
+  const isLoggedIn = loggedIn === null ? !!currentUser : loggedIn;
+  const displayName = userName || currentUser?.username || "會員";
+  const avatarText = displayName.slice(0, 1).toUpperCase();
+
   return (
     <header className="nav">
       <div className="nav-inner">
         <a className="nav-logo" href="index.php">
           <span className="nav-logo-mark"><Icon name="chopsticks" size={18} stroke={2.2}/></span>
-          <span>新北食指南</span>
+          <span>新北美食地圖</span>
         </a>
 
         <nav className="nav-links">
@@ -81,32 +118,32 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
         </nav>
 
         <div className="nav-auth">
-          {loggedIn ? (
+          {authLoaded && isLoggedIn ? (
             <div className="nav-user" onClick={() => setMenuOpen(o => !o)} ref={menuRef}>
-              <span className="nav-user-avatar">{userName.slice(-2,-1) || "美"}</span>
-              <span>{userName}</span>
+              <span className="nav-user-avatar">{avatarText}</span>
+              <span>{displayName}</span>
               <Icon name="chev" size={14} stroke={2.5}/>
               {menuOpen && (
                 <div className="nav-user-menu" onClick={e => e.stopPropagation()}>
                   <div className="nav-user-menu-item" style={{color: "var(--color-text-muted)", fontSize: 12}}>
-                    已登入帳號
+                    已登入
                   </div>
-                  <a href="profile.php" className="nav-user-menu-item" onClick={(e) => e.stopPropagation()}>
+                  <a href="profile.php" className="nav-user-menu-item">
                     <Icon name="user" size={15}/>個人資料
                   </a>
-                  <div className="nav-user-menu-item" style={{color: "var(--color-error)"}}>
+                  <button type="button" className="nav-user-menu-item" style={{color: "var(--color-error)"}} onClick={onLogout}>
                     <Icon name="logout" size={15}/>登出
-                  </div>
+                  </button>
                 </div>
               )}
             </div>
-          ) : (
+          ) : authLoaded ? (
             <>
               <a href="login.php" className="nav-auth-link">登入</a>
               <div className="nav-auth-divider"/>
               <a href="register.php" className="nav-auth-primary">註冊</a>
             </>
-          )}
+          ) : null}
         </div>
 
         <button className="nav-burger" onClick={() => setMobileOpen(o => !o)} aria-label="menu">
@@ -124,21 +161,21 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
             </a>
           ))}
           <div className="nav-mobile-auth">
-            {loggedIn ? (
+            {authLoaded && isLoggedIn ? (
               <>
                 <a href="profile.php" className="btn btn-outline btn-block">
                   <Icon name="user" size={16}/>個人資料
                 </a>
-                <button className="btn btn-outline btn-block">
-                  <Icon name="logout" size={16}/>登出 ({userName})
+                <button className="btn btn-outline btn-block" onClick={onLogout}>
+                  <Icon name="logout" size={16}/>登出 ({displayName})
                 </button>
               </>
-            ) : (
+            ) : authLoaded ? (
               <>
                 <a href="login.php" className="btn btn-outline">登入</a>
                 <a href="register.php" className="btn btn-primary">註冊</a>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -146,13 +183,12 @@ function Nav({ active, loggedIn = true, userName = "陳小美" }) {
   );
 }
 
-/* ---------- Footer ---------- */
 function Footer() {
   return (
     <footer className="footer">
       <div className="footer-inner">
-        <span>© 2026 新北食指南 · New Taipei Food Guide</span>
-        <span>資料來源：新北市政府觀光旅遊局開放資料</span>
+        <span>© 2026 新北美食地圖 | New Taipei Food Guide</span>
+        <span>資料僅供課程專案展示使用</span>
       </div>
     </footer>
   );
