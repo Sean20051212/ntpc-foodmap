@@ -20,7 +20,8 @@ define('DB_CHARSET', 'utf8mb4');
 define('GOOGLE_MAPS_KEY_BACKEND', 'YOUR_BACKEND_KEY_HERE');
 
 // 前端用 key（鎖 referrer）：載入 Maps JavaScript
-define('GOOGLE_MAPS_KEY_FRONTEND', 'YOUR_FRONTEND_KEY_HERE');
+// Frontend Maps JavaScript key lives in .env:
+// GOOGLE_MAPS_API_KEY=your_frontend_key
 
 // === Session ===
 define('SESSION_LIFETIME', 86400); // 24 小時

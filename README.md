@@ -48,19 +48,21 @@ cd ntpc-foodmap
 
 ### 3. 設定設定檔與環境變數
 
-本專案有兩份設定檔，**兩份都在 `.gitignore` 內，永遠不會被 commit**：
+本專案使用本機設定檔與環境變數，**實際含密碼或 API key 的檔案都在 `.gitignore` 內，永遠不會被 commit**：
 
 ```bash
 # config.php：PHP 端讀取的主要設定（DB / API key / Session / 限流）
 copy config.php.example config.php
 
-# .env：備用 / 未來改用 vlucas/phpdotenv 時用，目前 PHP 不會自動讀
-# 若已存在請略過；專案根目錄會有一份範例（DB / Google key / DEBUG_MODE）
+# .env：Google Maps 前端 key，PHP 會讀取後注入 window.GOOGLE_MAPS_API_KEY
+copy .env.example .env
 ```
 
 打開 `config.php`，填入：
 - 本機 DB 帳密（XAMPP 預設 `root` / 無密碼）
-- Google Maps API key（Geocoding API / Places API (New) / Maps JavaScript API 共用同一把 key，但建議在 GCP Console 分「鎖 IP（後端）」「鎖 referrer（前端）」兩把）
+
+打開 `.env`，填入：
+- `GOOGLE_MAPS_API_KEY`：Maps JavaScript API 前端 key（建議在 GCP Console 鎖 referrer）
 
 ### 4. 建立資料庫
 
@@ -122,7 +124,8 @@ ntpc-foodmap/
 ├── docs/                 # 文件、規格、簡報
 ├── config.php            # （不在 Git 中，本機自建）
 ├── config.php.example    # 設定檔範本
-├── .env                  # （不在 Git 中）備用環境變數
+├── .env                  # （不在 Git 中）Google Maps 前端 key
+├── .env.example          # 環境變數範本，不含真 key
 ├── .gitignore
 └── README.md
 ```
@@ -136,7 +139,7 @@ ntpc-foodmap/
 | `pages/login.php` | ⚠️ 假登入（任何密碼都會過），**上線前必須換掉** |
 | `api/**/*.php` 後端 API | ❌ 尚未實作 |
 | `lib/*.php` 共用模組 | ❌ 尚未實作（`config.php` 還只是定義常數，沒有 DB 連線函式） |
-| Google Maps API 串接 | ❌ `pages/index.php` 還是 `YOUR_FRONTEND_KEY_HERE` placeholder |
+| Google Maps API 串接 | 🟡 `pages/index.php` 從 `.env` 讀 `GOOGLE_MAPS_API_KEY` 後注入前端 |
 
 ---
 
@@ -234,7 +237,7 @@ git push
 3. 通知所有組員不要 pull 那個 commit
 4. 由負責人處理 Git 歷史清除（用 `git filter-branch` 或 BFG Repo-Cleaner）
 
-> 過去曾發生組員在 `pages/index.php` 寫死 Google Maps key 後 commit；現已改回 `YOUR_FRONTEND_KEY_HERE` placeholder。前端載入 key 的正規做法：從 `config.php` 讀 `GOOGLE_MAPS_KEY_FRONTEND` 後 echo 進 script src。
+> 過去曾發生組員在 `pages/index.php` 寫死 Google Maps key 後 commit；現已改成從 `.env` 讀 `GOOGLE_MAPS_API_KEY`，再由 PHP 注入 `window.GOOGLE_MAPS_API_KEY`。不要把 key 寫進 `pages/index.php` 或 `assets/js/config.js`。
 
 ---
 

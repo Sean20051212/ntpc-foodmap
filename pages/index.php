@@ -116,6 +116,56 @@ function h($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function loadProjectEnv($path)
+{
+    if (!is_file($path) || !is_readable($path)) {
+        return [];
+    }
+
+    $env = [];
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || strpos($line, '=') === false) {
+            continue;
+        }
+
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        $value = trim($value, "\"'");
+        if ($key !== '') {
+            $env[$key] = $value;
+        }
+    }
+
+    return $env;
+}
+
+function projectEnv($key, $default = '')
+{
+    static $env = null;
+
+    $value = getenv($key);
+    if ($value !== false) {
+        return $value;
+    }
+
+    if (isset($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+
+    if (isset($_SERVER[$key])) {
+        return $_SERVER[$key];
+    }
+
+    if ($env === null) {
+        $env = loadProjectEnv(__DIR__ . '/../.env');
+    }
+
+    return $env[$key] ?? $default;
+}
+
 function distanceMeters($lat1, $lng1, $lat2, $lng2)
 {
     $earthRadius = 6371000;
@@ -137,6 +187,8 @@ foreach ($mockRestaurants as &$restaurant) {
     $restaurant['lng'] = $restaurant['longitude'];
 }
 unset($restaurant);
+
+$googleMapsApiKey = projectEnv('GOOGLE_MAPS_API_KEY');
 
 $restaurants = array_values(array_filter($mockRestaurants, function ($restaurant) use ($searchKeyword, $selectedCuisine, $selectedDistance) {
     if ($searchKeyword !== '') {
@@ -299,8 +351,8 @@ if (!empty($_GET['ajax'])) {
             'cuisine' => $selectedCuisine,
             'distance' => $selectedDistance,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        window.GOOGLE_MAPS_API_KEY = <?php echo json_encode($googleMapsApiKey, JSON_UNESCAPED_SLASHES); ?>;
     </script>
-    <script src="../assets/js/config.js"></script>
     <script src="../assets/js/map.js"></script>
     <script src="../assets/js/home-php.js"></script>
 </body>

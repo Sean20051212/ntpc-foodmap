@@ -21,13 +21,13 @@
 ### 相依檔
 - `assets/css/styles.css`、`assets/css/home.css`
 - `assets/js/map.js`、`assets/js/home-php.js`
-- `https://maps.googleapis.com/maps/api/js?key=YOUR_FRONTEND_KEY_HERE` ← **placeholder，必須改成從 `config.php` 讀**
+- `.env` 的 `GOOGLE_MAPS_API_KEY` 會由 `pages/index.php` 注入 `window.GOOGLE_MAPS_API_KEY`
 
 ## 待辦（讓這頁變成真實版）
 
 1. **接 DB**：開頭 `require __DIR__ . '/../config.php';` 與 `require __DIR__ . '/../lib/db.php';`，把 `$mockRestaurants` 換成 `SELECT * FROM restaurants JOIN ...`
 2. **分類選單對齊 schema**：目前 8 個寫死選項要換成 `SELECT id, name FROM tags`（14 個）
-3. **Google Maps key**：把 `YOUR_FRONTEND_KEY_HERE` 改成 `<?php echo h(GOOGLE_MAPS_KEY_FRONTEND); ?>`
+3. **Google Maps key**：在 `.env` 填入 `GOOGLE_MAPS_API_KEY=你的前端 Maps JavaScript API key`
 4. **距離中心點**：目前固定板橋附近，應改為瀏覽器 geolocation 或讓使用者選區（用 `districts` 的中心經緯度）
 
 ## AJAX 回傳格式
@@ -46,5 +46,5 @@
 ## 故障排除
 
 - **中文搜尋無結果**：確認 PHP 啟用 `mbstring` 擴展，且檔案編碼 UTF-8
-- **地圖標記不顯示**：先檢查瀏覽器 console 是否因 `YOUR_FRONTEND_KEY_HERE` 報 InvalidKey
+- **地圖標記不顯示**：先檢查 `.env` 是否有 `GOOGLE_MAPS_API_KEY`，以及瀏覽器 console 是否報 InvalidKey
 - **改了 PHP 沒效果**：若使用 XAMPP，記得專案是 Copy-Item 到 `htdocs/`，要重新複製 + Ctrl+F5

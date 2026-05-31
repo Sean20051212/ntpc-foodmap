@@ -41,7 +41,7 @@
 - `POST /api/maps/geocode.php` — 後端代打 Geocoding API（用 `GOOGLE_MAPS_KEY_BACKEND`，鎖 IP）
 - `POST /api/maps/directions.php` — 後端代打 Directions API
 
-> 前端的 Maps JavaScript 仍直接用 `GOOGLE_MAPS_KEY_FRONTEND`（鎖 referrer）載入，不走後端代理。
+> 前端的 Maps JavaScript key 由 `.env` 的 `GOOGLE_MAPS_API_KEY` 提供，PHP 注入 `window.GOOGLE_MAPS_API_KEY` 後由 `assets/js/map.js` 載入，不走後端代理。
 
 ## 資料模型參考
 
