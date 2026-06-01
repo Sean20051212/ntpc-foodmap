@@ -11,8 +11,8 @@
 - **技術棧**：PHP 8.x + MySQL 8.x + 原生 HTML/CSS/JS + Google Maps API
 - **開發環境**：XAMPP（Windows）
 - **部署**：免費 PHP host（InfinityFree 或校內主機）
-- **資料庫**：11 張表（users / districts / district_adjacency / restaurants / restaurant_phones / restaurant_photos / opentime / tags / restaurant_tags_mapping / reviews / favorites）+ 觸發器自動維護 `rating_avg` / `rating_count`
-- **詳細規格**：見 `docs/` 資料夾
+- **資料庫**：11 張表（users / districts / district_adjacency / restaurants / restaurant_phones / restaurant_photos / opentime / tags / restaurant_tags_mapping / reviews / favorites）+ 3 個觸發器自動維護 `rating_avg` / `rating_count`
+- **詳細規格**：見 [docs/design-audit.md](docs/design-audit.md)、[docs/backend-plan.md](docs/backend-plan.md)、[docs/frontend-plan.md](docs/frontend-plan.md)
 
 ---
 
@@ -82,10 +82,11 @@ mysql -u root ntpc_foodmap < sql/database.sql
 - 29 區 + 46 條鄰接 + 14 個分類
 - 約 690 筆真實餐廳（已用 Google Places API 補上 `google_place_id`、`price_level`、每店多 5 張照片）
 
-> 若要從原始 CSV 重新產生資料庫，需要先有 `restaurants.csv`（未進 git）+ 跑：
+> 若要從原始 CSV 重新產生資料庫，需要先有 `restaurants.csv`（未進 git，已從專案目錄刪除備份）+ 跑：
 > ```bash
-> node scripts/import_restaurants.mjs   # 從 CSV 產出 sql/seed.sql（已過時）
-> node scripts/enrich_google.mjs        # 用 Google API 補強
+> npm install                            # 裝 mysql2
+> node scripts/import_restaurants.mjs    # 從 CSV 產出 INSERT
+> node scripts/enrich_google.mjs         # 用 Google Places API 補 place_id / price_level / 5 張照片
 > ```
 > 一般情況直接用 `database.sql` 即可。
 
@@ -110,19 +111,18 @@ ntpc-foodmap/
 ├── assets/
 │   ├── js/               # 前端 JavaScript（D、E）
 │   └── css/              # 樣式表（D、E）
-├── pages/                # 前端頁面（D、E）— 目前多數頁仍用 mock data
-├── lib/                  # 共用 PHP（C）— ⚠️ 尚未實作（待寫 db.php / auth.php / response.php / rate_limit.php）
+├── pages/                # 前端頁面（D、E）— ⚠️ 目前多數頁仍用 mock data，將依 docs/frontend-plan.md 重寫
+├── lib/                  # 共用 PHP（C）— ❌ 尚未實作，規格見 docs/backend-plan.md §3
 ├── sql/
-│   ├── schema.sql        # 11 張表 + 觸發器 + 29 區/46 鄰接/14 分類的 seed
-│   └── seed.sql          # 693 筆真實餐廳資料（由 import_restaurants.mjs 產生）
+│   └── database.sql      # 唯一 SQL 檔：11 張表 + 3 觸發器 + 29 區/46 鄰接/14 分類 + 690 筆已補強餐廳
 ├── scripts/
-│   └── import_restaurants.mjs   # 讀 restaurants.csv → 產出 sql/seed.sql
-├── data/                 # （未提交）資料整理工作目錄
-├── restaurants.csv       # （未提交）699 筆原始整合資料，保留待 Google API 補強
-├── docs/                 # 文件、規格、簡報
+│   ├── import_restaurants.mjs   # 讀 restaurants.csv → 產出 SQL INSERT
+│   └── enrich_google.mjs        # 補 google_place_id / price_level / 額外 5 張照片
+├── docs/                 # 規格與計畫（見下方文件清單）
+├── package.json          # mysql2 依賴（scripts/ 用，非 web runtime）
 ├── config.php            # （不在 Git 中，本機自建）
 ├── config.php.example    # 設定檔範本
-├── .env                  # （不在 Git 中）備用環境變數
+├── .env                  # （不在 Git 中）DB / Google key 環境變數
 ├── .gitignore
 └── README.md
 ```
@@ -131,12 +131,12 @@ ntpc-foodmap/
 
 | 區塊 | 狀態 |
 |---|---|
-| `sql/schema.sql` + `sql/seed.sql` | ✅ 完成，可直接 import |
-| `pages/*.php` 前端頁 | 🟡 UI 完成，但 **資料是寫死的 mock data**，未串 DB |
-| `pages/login.php` | ⚠️ 假登入（任何密碼都會過），**上線前必須換掉** |
-| `api/**/*.php` 後端 API | ❌ 尚未實作 |
-| `lib/*.php` 共用模組 | ❌ 尚未實作（`config.php` 還只是定義常數，沒有 DB 連線函式） |
-| Google Maps API 串接 | ❌ `pages/index.php` 還是 `YOUR_FRONTEND_KEY_HERE` placeholder |
+| `sql/database.sql` | ✅ 完成，包含 schema + 觸發器 + 所有 seed + 690 筆已補強餐廳 |
+| `pages/*.php` 前端頁 | 🟡 UI 完成，但 **資料是寫死的 mock data**，將依 [docs/frontend-plan.md](docs/frontend-plan.md) 全面改寫成 API call |
+| `pages/login.php` | ⚠️ 假登入（任何密碼都會過），會在前端重寫時換掉 |
+| `api/**/*.php` 後端 API | ❌ 尚未實作，規格見 [docs/backend-plan.md](docs/backend-plan.md) §4 |
+| `lib/*.php` 共用模組 | ❌ 尚未實作，規格見 [docs/backend-plan.md](docs/backend-plan.md) §3 |
+| Google Maps API 串接 | 🟡 後端代打 (`/api/geo/geocode`) 設計完成；前端 key 載入方式待定 |
 
 ---
 
@@ -240,11 +240,15 @@ git push
 
 ## 📋 文件與規格
 
-所有規格文件放在 `docs/`：
+所有規格文件放在 `docs/`，三份檔案各有明確職責，**動工前必讀**：
 
-- `docs/spec.pdf`：五人完整規格文件
-- `docs/api-spec.md`：API 規格（B、C 維護）
-- `docs/er-diagram.png`：ER 圖（A 維護）
+| 檔案 | 給誰 | 內容 |
+|---|---|---|
+| [docs/design-audit.md](docs/design-audit.md) | 共用 | schema 相容性審查 + 7 項已確認決策（前後端共同的決策來源） |
+| [docs/backend-plan.md](docs/backend-plan.md) | 後端 agent / B、C | 27 支 API 端點完整規格 + lib/ 共用模組 + SQL 細節 + curl 驗收 |
+| [docs/frontend-plan.md](docs/frontend-plan.md) | 前端 agent / D、E | 嚴禁清單（不可做的事）+ 各頁面 wireframe + 對應的 API 呼叫表 |
+
+> **重要原則**：所有運算寫在後端，前端只負責顯示。任何 mock data、距離計算、篩選邏輯、推薦演算法、抽選邏輯一律不准寫在前端，違反 frontend-plan §0 的嚴禁清單會被打回重做。
 
 ---
 
