@@ -13,15 +13,27 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script src="../assets/js/restaurants.js?v=2"></script>
 <script type="text/babel" src="../assets/js/shared.jsx?v=3"></script>
 <script type="text/babel">
-const { useState } = React;
+const { useEffect, useState } = React;
+
+function toCard(row) {
+  return {
+    id: Number(row.restaurant_id),
+    name: row.restaurant_name || "未命名餐廳",
+    category: row.tags?.[0]?.tag_name || "已收藏",
+    address: row.address || "尚無地址",
+    hours: row.is_open_now ? "目前營業中" : "營業時間請見詳細頁",
+    rating: Number(row.rating_avg || 0),
+    image: row.main_photo_url || "",
+    favoritedAt: row.favorited_at || "",
+  };
+}
 
 function RCard({ r, onRemove, removing }) {
   return (
     <article className={"rcard" + (removing ? " is-removing" : "")}>
-      <span className={"tag" + (r.catColor === "green" ? " tag-green" : "")}>{r.category}</span>
+      <span className="tag">{r.category}</span>
       <h3 className="rcard-name">{r.name}</h3>
       <div className="rcard-meta">
         <div className="rcard-meta-row is-clamp">
@@ -32,10 +44,17 @@ function RCard({ r, onRemove, removing }) {
         </div>
       </div>
       <div className="rcard-foot">
-        <button className="heart-btn" aria-label="移除收藏" onClick={() => onRemove(r.id)}>
+        <button
+          className="heart-btn"
+          aria-label="移除收藏"
+          title="移除收藏"
+          onClick={() => onRemove(r)}
+        >
           <Icon name="heart" size={22}/>
         </button>
-        <button className="btn btn-outline btn-sm">查看詳情 →</button>
+        <a className="btn btn-outline btn-sm" href={`restaurant_detail.php?id=${r.id}`}>
+          查看詳細
+        </a>
       </div>
     </article>
   );
@@ -45,13 +64,13 @@ function ConfirmModal({ restaurant, onCancel, onConfirm }) {
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h3 className="modal-title">確定要移除收藏嗎？</h3>
+        <h3 className="modal-title">確定要移除收藏？</h3>
         <p className="modal-body">
-          將會從收藏清單中移除「<strong style={{color: "var(--color-text)"}}>{restaurant?.name}</strong>」。
+          你將從收藏清單移除 <strong style={{color: "var(--color-text)"}}>{restaurant?.name}</strong>。
         </p>
         <div className="modal-actions">
           <button className="btn btn-outline" onClick={onCancel}>取消</button>
-          <button className="btn btn-primary" onClick={onConfirm}>確定移除</button>
+          <button className="btn btn-primary" onClick={onConfirm}>移除收藏</button>
         </div>
       </div>
     </div>
@@ -59,25 +78,69 @@ function ConfirmModal({ restaurant, onCancel, onConfirm }) {
 }
 
 function FavoritesPage() {
-  const [items, setItems] = useState(window.RESTAURANTS);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [removingId, setRemovingId] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
 
-  function askRemove(id) {
-    const t = items.find(i => i.id === id);
-    setConfirmTarget(t);
+  async function loadFavorites() {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("../api/favorites/list.php", {
+        credentials: "same-origin",
+      });
+      const payload = await response.json();
+      if (!payload.ok) {
+        if (payload.error?.code === "unauthenticated") {
+          setError("請先登入後再查看收藏。");
+          setItems([]);
+          return;
+        }
+        throw new Error(payload.error?.message || "favorites load failed");
+      }
+      setItems((payload.data?.restaurants || []).map(toCard));
+    } catch (err) {
+      console.error("favorites load failed:", err);
+      setError("收藏清單載入失敗，請確認後端 API 與資料庫是否啟動。");
+    } finally {
+      setLoading(false);
+    }
   }
-  function doRemove() {
-    const id = confirmTarget.id;
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  function askRemove(restaurant) {
+    setConfirmTarget(restaurant);
+  }
+
+  async function doRemove() {
+    const target = confirmTarget;
+    if (!target) return;
+
     setConfirmTarget(null);
-    setRemovingId(id);
-    setTimeout(() => {
-      setItems(prev => prev.filter(i => i.id !== id));
+    setRemovingId(target.id);
+    try {
+      const response = await fetch("../api/favorites/toggle.php", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({ restaurant_id: target.id }),
+      });
+      const payload = await response.json();
+      if (!payload.ok) {
+        throw new Error(payload.error?.message || "favorite remove failed");
+      }
+      setItems(prev => prev.filter(item => item.id !== target.id));
+    } catch (err) {
+      console.error("favorite remove failed:", err);
+      setError("移除收藏失敗，請稍後再試。");
+    } finally {
       setRemovingId(null);
-    }, 260);
-  }
-  function clearAll() {
-    setItems([]);
+    }
   }
 
   return (
@@ -87,22 +150,36 @@ function FavoritesPage() {
         <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, flexWrap: "wrap", gap: 12}}>
           <div>
             <h1 className="page-title">我的收藏</h1>
-            <p className="page-sub" style={{margin: 0}}>共 {items.length} 家餐廳</p>
+            <p className="page-sub" style={{margin: 0}}>
+              {loading ? "正在載入收藏清單" : `共 ${items.length} 間餐廳`}
+            </p>
           </div>
-          {items.length > 0 && (
-            <button className="btn btn-ghost btn-sm" onClick={clearAll}>清空收藏</button>
-          )}
+          <button className="btn btn-outline btn-sm" onClick={loadFavorites} disabled={loading}>
+            <Icon name="refresh" size={14}/> 重新整理
+          </button>
         </div>
 
-        {items.length === 0 ? (
+        {error && (
+          <div className="warn-banner" style={{marginBottom: 18}}>
+            <Icon name="warn" size={18}/> {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="empty">
+            <div className="empty-icon"><Icon name="heart" size={42} stroke={1.5}/></div>
+            <h3 className="empty-text">正在載入</h3>
+            <p className="empty-sub">正在讀取你的收藏餐廳</p>
+          </div>
+        ) : items.length === 0 ? (
           <div className="empty">
             <div className="empty-icon">
               <Icon name="inbox" size={42} stroke={1.5}/>
             </div>
-            <h3 className="empty-text">還沒有收藏任何餐廳</h3>
-            <p className="empty-sub">逛逛首頁地圖，把喜歡的店點愛心加入收藏吧</p>
+            <h3 className="empty-text">尚未收藏餐廳</h3>
+            <p className="empty-sub">在餐廳詳細頁或輪盤結果按下收藏後，會出現在這裡。</p>
             <a href="index.php" className="btn btn-primary">
-              <Icon name="search" size={16}/> 去搜尋餐廳
+              <Icon name="search" size={16}/> 尋找餐廳
             </a>
           </div>
         ) : (

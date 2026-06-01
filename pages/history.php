@@ -15,34 +15,56 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script type="text/babel" src="../assets/js/shared.jsx?v=3"></script>
 <script type="text/babel">
-const { useState, useRef, useEffect } = React;
+const { useEffect, useRef, useState } = React;
 
-const SEARCH_HISTORY = [
-  { id: "s1", time: "2026/05/24 14:30", area: "板橋區", filters: ["中式料理", "1km 內"] },
-  { id: "s2", time: "2026/05/23 19:12", area: "新店區", filters: ["鍋物", "3km 內"] },
-  { id: "s3", time: "2026/05/22 12:45", area: "永和區", filters: ["台式小吃"] },
-  { id: "s4", time: "2026/05/20 18:03", area: "淡水區", filters: ["日式料理", "不限距離"] },
-  { id: "s5", time: "2026/05/18 13:50", area: "中和區", filters: ["異國料理", "500m 內"] },
-  { id: "s6", time: "2026/05/15 11:22", area: "蘆洲區", filters: ["西式料理", "1km 內"] }
-];
-
-const WHEEL_HISTORY = [
-  { id: "w1", time: "2026/05/24 12:08", name: "鼎泰豐 (板橋大遠百店)", cat: "中式料理" },
-  { id: "w2", time: "2026/05/22 18:40", name: "大紅袍麻辣鴛鴦鍋", cat: "鍋物" },
-  { id: "w3", time: "2026/05/19 13:15", name: "壽司屋", cat: "日式料理" },
-  { id: "w4", time: "2026/05/17 19:55", name: "Gino Pizza 義式窯烤", cat: "西式料理" },
-  { id: "w5", time: "2026/05/14 12:30", name: "大胖子豆腐冰淇淋", cat: "甜點" }
-];
+const WHEEL_HISTORY_KEY = "ntpcFoodmapWheelHistory";
+const SEARCH_HISTORY_KEY = "ntpcFoodmapSearchHistory";
 
 const TABS = [
   { key: "search", label: "搜尋紀錄" },
   { key: "wheel", label: "輪盤紀錄" }
 ];
 
+function readHistory(key) {
+  try {
+    const data = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = number => String(number).padStart(2, "0");
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function HistoryPage() {
   const [tab, setTab] = useState("search");
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [wheelHistory, setWheelHistory] = useState([]);
   const tabsRef = useRef(null);
   const [underline, setUnderline] = useState({ left: 0, width: 0 });
+
+  function reloadHistory() {
+    setSearchHistory(readHistory(SEARCH_HISTORY_KEY));
+    setWheelHistory(readHistory(WHEEL_HISTORY_KEY));
+  }
+
+  useEffect(() => {
+    reloadHistory();
+
+    function onStorage(event) {
+      if (!event.key || event.key === WHEEL_HISTORY_KEY || event.key === SEARCH_HISTORY_KEY) {
+        reloadHistory();
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   useEffect(() => {
     const el = tabsRef.current?.querySelector('[data-active="true"]');
@@ -51,16 +73,34 @@ function HistoryPage() {
       const r = el.getBoundingClientRect();
       setUnderline({ left: r.left - parent.left, width: r.width });
     }
-  }, [tab]);
+  }, [tab, searchHistory.length, wheelHistory.length]);
 
-  const list = tab === "search" ? SEARCH_HISTORY : WHEEL_HISTORY;
+  function clearCurrent() {
+    if (tab === "search") {
+      localStorage.removeItem(SEARCH_HISTORY_KEY);
+    } else {
+      localStorage.removeItem(WHEEL_HISTORY_KEY);
+    }
+    reloadHistory();
+  }
+
+  const list = tab === "search" ? searchHistory : wheelHistory;
 
   return (
     <>
       <Nav active="history"/>
       <main className="page">
-        <h1 className="page-title">我的歷史紀錄</h1>
-        <p className="page-sub">回顧最近的搜尋與輪盤結果</p>
+        <div style={{display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap"}}>
+          <div>
+            <h1 className="page-title">我的歷史紀錄</h1>
+            <p className="page-sub">回顧最近的搜尋與輪盤結果</p>
+          </div>
+          {list.length > 0 && (
+            <button className="btn btn-outline btn-sm" onClick={clearCurrent}>
+              <Icon name="close" size={14}/> 清空目前紀錄
+            </button>
+          )}
+        </div>
 
         <div className="tabs" ref={tabsRef}>
           {TABS.map(t => (
@@ -78,7 +118,7 @@ function HistoryPage() {
                 fontSize: 12, padding: "2px 8px", borderRadius: 999,
                 fontFamily: "var(--font-en)", fontWeight: 600
               }}>
-                {t.key === "search" ? SEARCH_HISTORY.length : WHEEL_HISTORY.length}
+                {t.key === "search" ? searchHistory.length : wheelHistory.length}
               </span>
             </button>
           ))}
@@ -89,36 +129,47 @@ function HistoryPage() {
           <div className="empty">
             <div className="empty-icon"><Icon name="history" size={42} stroke={1.5}/></div>
             <h3 className="empty-text">尚無紀錄</h3>
-            <p className="empty-sub">使用搜尋或輪盤功能後，會自動記錄在此</p>
+            <p className="empty-sub">
+              {tab === "wheel" ? "轉動輪盤後，抽中的餐廳會自動記錄在這裡。" : "目前尚未儲存搜尋紀錄。"}
+            </p>
           </div>
         ) : (
           <div className="timeline">
-            {tab === "search" && SEARCH_HISTORY.map(item => (
+            {tab === "search" && searchHistory.map(item => (
               <div className="tl-item" key={item.id}>
                 <div>
-                  <div className="tl-time">{item.time}</div>
+                  <div className="tl-time">{formatTime(item.time)}</div>
                   <div className="tl-content">
-                    搜尋了「<strong>{item.area}</strong>」
-                    {item.filters.map((f, i) => (
+                    搜尋 <strong>{item.area || "新北市"}</strong>
+                    {(item.filters || []).map((f, i) => (
                       <span className="pill" key={i}>{f}</span>
                     ))}
                   </div>
                 </div>
-                <button className="btn btn-outline btn-sm">
-                  <Icon name="refresh" size={14}/> 再次搜尋
-                </button>
+                <a className="btn btn-outline btn-sm" href="index.php">
+                  <Icon name="refresh" size={14}/> 重新搜尋
+                </a>
               </div>
             ))}
-            {tab === "wheel" && WHEEL_HISTORY.map(item => (
-              <div className="tl-item" key={item.id}>
+            {tab === "wheel" && wheelHistory.map(item => (
+              <div className="tl-item" key={item.id || `${item.restaurant_id}-${item.time}`}>
                 <div>
-                  <div className="tl-time">{item.time}</div>
+                  <div className="tl-time">{formatTime(item.time)}</div>
                   <div className="tl-content">
                     <Icon name="target" size={15} style={{verticalAlign: "-2px", color: "var(--color-primary)", marginRight: 6}}/>
-                    抽中了「<strong>{item.name}</strong>」<span className="pill">{item.cat}</span>
+                    輪盤抽中 <strong>{item.name}</strong>
+                    {item.cat && <span className="pill">{item.cat}</span>}
                   </div>
                 </div>
-                <button className="btn btn-outline btn-sm">查看餐廳 →</button>
+                {item.restaurant_id ? (
+                  <a className="btn btn-outline btn-sm" href={`restaurant_detail.php?id=${item.restaurant_id}`}>
+                    查看詳細
+                  </a>
+                ) : (
+                  <a className="btn btn-outline btn-sm" href="wheel.php">
+                    再轉一次
+                  </a>
+                )}
               </div>
             ))}
           </div>

@@ -42,26 +42,32 @@ class MapManager {
     
     /**
      * 從 sessionStorage 載入 userLocation
-     * 格式：{lat, lng}
+     * 格式：{lat, lng, source}
      */
     loadUserLocationFromStorage() {
         const stored = sessionStorage.getItem('userLocation');
         if (stored) {
             try {
-                this.userLocation = JSON.parse(stored);
-                console.log('已從 sessionStorage 載入位置:', this.userLocation);
+                const parsed = JSON.parse(stored);
+                if (parsed?.source === 'browser' && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lng)) {
+                    this.userLocation = parsed;
+                    console.log('已從 sessionStorage 載入位置:', this.userLocation);
+                } else {
+                    sessionStorage.removeItem('userLocation');
+                }
             } catch (e) {
                 console.error('sessionStorage userLocation 解析失敗:', e);
+                sessionStorage.removeItem('userLocation');
             }
         }
     }
     
     /**
      * 保存 userLocation 到 sessionStorage
-     * 格式：{lat, lng}
+     * 格式：{lat, lng, source}
      */
     saveUserLocationToStorage() {
-        if (this.userLocation) {
+        if (this.userLocation?.source === 'browser') {
             sessionStorage.setItem('userLocation', JSON.stringify(this.userLocation));
         }
     }
@@ -76,7 +82,8 @@ class MapManager {
                     // 用戶允許定位
                     this.userLocation = {
                         lat: position.coords.latitude,
-                        lng: position.coords.longitude
+                        lng: position.coords.longitude,
+                        source: 'browser'
                     };
                     this.saveUserLocationToStorage();
                     console.log('已獲取用戶位置:', this.userLocation);
@@ -87,9 +94,9 @@ class MapManager {
                     console.warn('地理定位失敗:', error.message);
                     this.userLocation = {
                         lat: this.DEFAULT_LAT,
-                        lng: this.DEFAULT_LNG
+                        lng: this.DEFAULT_LNG,
+                        source: 'fallback'
                     };
-                    this.saveUserLocationToStorage();
                     console.log('使用預設位置（台北101）:', this.userLocation);
                     this.initMap();
                 },
@@ -104,9 +111,9 @@ class MapManager {
             console.warn('瀏覽器不支援 Geolocation，使用預設位置');
             this.userLocation = {
                 lat: this.DEFAULT_LAT,
-                lng: this.DEFAULT_LNG
+                lng: this.DEFAULT_LNG,
+                source: 'fallback'
             };
-            this.saveUserLocationToStorage();
             this.initMap();
         }
     }
@@ -121,6 +128,12 @@ class MapManager {
             return;
         }
         
+        if (!window.google || !google.maps) {
+            console.warn('Google Maps 尚未載入，略過地圖初始化。');
+            this.flushPendingRestaurants();
+            return;
+        }
+
         const center = {
             lat: this.userLocation.lat,
             lng: this.userLocation.lng
@@ -168,12 +181,13 @@ class MapManager {
             return null;
         }
 
+        const markerTitle = restaurant.name || restaurant.restaurant_name || '';
         const marker = new google.maps.Marker({
             position: { lat, lng },
             map: this.map,
-            title: restaurant.name,
+            title: markerTitle,
             label: {
-                text: restaurant.name,
+                text: markerTitle,
                 color: '#2D2D2D',
                 fontSize: '12px',
                 fontWeight: '600'

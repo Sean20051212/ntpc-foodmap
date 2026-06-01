@@ -230,6 +230,28 @@
     color: var(--color-text-muted);
 }
 
+.detail-review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.detail-review-input {
+    resize: vertical;
+    min-height: 112px;
+}
+
+.detail-review-message {
+    min-height: 18px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-error);
+}
+
+.detail-review-message.is-ok {
+    color: var(--color-secondary);
+}
+
 /* 行動按鈕 */
 .detail-actions {
     display: flex;
