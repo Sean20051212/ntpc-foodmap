@@ -107,7 +107,8 @@ function useApi(fn, deps, opts) {
 
 /* ---------- RestaurantCard ---------- */
 function Tags({ items, max = 3 }) {
-  return <div className="row gap6 wrap">{items.slice(0, max).map(t => <span key={t.tag_id} className="tag">{t.tag_name}</span>)}</div>;
+  const arr = Array.isArray(items) ? items : [];
+  return <div className="row gap6 wrap">{arr.slice(0, max).map(t => <span key={t.tag_id} className="tag">{t.tag_name}</span>)}</div>;
 }
 function RestaurantCard({ r, variant = "grid", onFav, me }) {
   const go = () => navigate("#/detail?id=" + r.restaurant_id);

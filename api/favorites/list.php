@@ -28,8 +28,27 @@ $stmt = db()->prepare(
      ORDER BY f.created_at DESC'
 );
 $stmt->execute([(int) $user['user_id']]);
+$rows = $stmt->fetchAll();
 
-$restaurants = array_map(static function (array $row): array {
+// 撈所有相關餐廳的 tags 一次，再以 restaurant_id 分組
+$tagsByRestaurant = [];
+if ($rows) {
+    $ids = array_map(static fn($r) => (int) $r['restaurant_id'], $rows);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $tagStmt = db()->prepare(
+        "SELECT m.restaurant_id, t.tag_id, t.tag_name
+         FROM restaurant_tags_mapping m
+         JOIN tags t ON t.tag_id = m.tag_id
+         WHERE m.restaurant_id IN ($placeholders)"
+    );
+    $tagStmt->execute($ids);
+    foreach ($tagStmt->fetchAll() as $t) {
+        $rid = (int) $t['restaurant_id'];
+        $tagsByRestaurant[$rid][] = ['tag_id' => (int) $t['tag_id'], 'tag_name' => $t['tag_name']];
+    }
+}
+
+$restaurants = array_map(static function (array $row) use ($tagsByRestaurant): array {
     $row['restaurant_id'] = (int) $row['restaurant_id'];
     $row['latitude'] = (float) $row['latitude'];
     $row['longitude'] = (float) $row['longitude'];
@@ -37,8 +56,9 @@ $restaurants = array_map(static function (array $row): array {
     $row['rating_count'] = (int) $row['rating_count'];
     $row['price_level'] = $row['price_level'] === null ? null : (int) $row['price_level'];
     $row['is_favorited'] = true;
+    $row['tags'] = $tagsByRestaurant[$row['restaurant_id']] ?? [];
     return $row;
-}, $stmt->fetchAll());
+}, $rows);
 
 jsonOk(['restaurants' => $restaurants]);
 
