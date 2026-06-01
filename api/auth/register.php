@@ -1,49 +1,43 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../lib/response.php';
-require_once __DIR__ . '/../../lib/db.php';
-require_once __DIR__ . '/../../lib/session.php';
+require_once __DIR__ . '/../../lib/bootstrap.php';
+require_once __DIR__ . '/../../lib/rate_limit.php';
 
-require_method('POST');
+requireMethod('POST');
+ensureSession();
+rateLimitCheck('auth_register');
 
-$data = read_request_data();
-$username = trim((string) ($data['username'] ?? ''));
-$password = (string) ($data['password'] ?? '');
+$input = getInput();
+$username = requireString($input, 'username', 50);
+$password = requireString($input, 'password', 100);
 
-if (!preg_match('/^[A-Za-z0-9_]{3,50}$/', $username)) {
-    error_response('Username must be 3-50 characters and only contain letters, numbers, or underscore.', 400);
+if (mb_strlen($username, 'UTF-8') < 3) {
+    jsonErr('invalid_input', 'username 至少需要 3 個字');
+}
+if (mb_strlen($password, 'UTF-8') < 8) {
+    jsonErr('invalid_input', 'password 至少需要 8 個字');
 }
 
-if (strlen($password) < 8 || strlen($password) > 72) {
-    error_response('Password must be 8-72 characters.', 400);
+try {
+    $stmt = db()->prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
+    $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT)]);
+} catch (PDOException $e) {
+    if (($e->errorInfo[1] ?? null) === 1062) {
+        jsonErr('conflict', 'username 已被使用', 409);
+    }
+    throw $e;
 }
 
-$pdo = db();
+$userId = (int) db()->lastInsertId();
+session_regenerate_id(true);
+$_SESSION['user_id'] = $userId;
 
-$stmt = $pdo->prepare('SELECT user_id FROM users WHERE username = :username LIMIT 1');
-$stmt->execute(['username' => $username]);
-if ($stmt->fetch()) {
-    error_response('Username already exists.', 409);
-}
-
-$passwordHash = password_hash($password, PASSWORD_DEFAULT);
-
-$stmt = $pdo->prepare(
-    'INSERT INTO users (username, password_hash, created_at) VALUES (:username, :password_hash, NOW())'
-);
-$stmt->execute([
-    'username' => $username,
-    'password_hash' => $passwordHash,
-]);
-
-$userId = (int) $pdo->lastInsertId();
-login_user($userId, $username);
-
-ok_response([
+jsonOk([
     'user' => [
         'user_id' => $userId,
         'username' => $username,
+        'is_admin' => 0,
     ],
-], 201);
+]);
 

@@ -1,34 +1,31 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../lib/response.php';
-require_once __DIR__ . '/../../lib/db.php';
-require_once __DIR__ . '/../../lib/session.php';
+require_once __DIR__ . '/../../lib/bootstrap.php';
+require_once __DIR__ . '/../../lib/rate_limit.php';
 
-require_method('POST');
+requireMethod('POST');
+ensureSession();
+rateLimitCheck('auth_login');
 
-$data = read_request_data();
-$username = trim((string) ($data['username'] ?? ''));
-$password = (string) ($data['password'] ?? '');
+$input = getInput();
+$username = requireString($input, 'username', 50);
+$password = requireString($input, 'password', 100);
 
-if ($username === '' || $password === '') {
-    error_response('Username and password are required.', 400);
+$stmt = db()->prepare(
+    'SELECT user_id, username, password_hash, is_admin, created_at
+     FROM users
+     WHERE username = ?'
+);
+$stmt->execute([$username]);
+$row = $stmt->fetch();
+
+if (!$row || !password_verify($password, $row['password_hash'])) {
+    jsonErr('invalid_credentials', '帳號或密碼錯誤', 401);
 }
 
-$stmt = db()->prepare('SELECT user_id, username, password_hash FROM users WHERE username = :username LIMIT 1');
-$stmt->execute(['username' => $username]);
-$user = $stmt->fetch();
+session_regenerate_id(true);
+$_SESSION['user_id'] = (int) $row['user_id'];
 
-if (!$user || !password_verify($password, (string) $user['password_hash'])) {
-    error_response('Invalid username or password.', 401);
-}
-
-login_user((int) $user['user_id'], (string) $user['username']);
-
-ok_response([
-    'user' => [
-        'user_id' => (int) $user['user_id'],
-        'username' => (string) $user['username'],
-    ],
-]);
+jsonOk(['user' => publicUser($row)]);
 

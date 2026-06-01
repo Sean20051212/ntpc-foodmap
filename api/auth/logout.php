@@ -1,12 +1,17 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../lib/response.php';
-require_once __DIR__ . '/../../lib/session.php';
+require_once __DIR__ . '/../../lib/bootstrap.php';
 
-require_method('POST');
+requireMethod('POST');
+ensureSession();
 
-logout_user();
+$_SESSION = [];
+if (ini_get('session.use_cookies')) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', (bool) $params['secure'], (bool) $params['httponly']);
+}
+session_destroy();
 
-ok_response();
+jsonOk(null);
 

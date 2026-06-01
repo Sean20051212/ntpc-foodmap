@@ -1,56 +1,37 @@
 <?php
 declare(strict_types=1);
 
-function json_response(array $payload, int $statusCode = 200): void
+require_once __DIR__ . '/config.php';
+
+function jsonOk($data = null): void
 {
-    http_response_code($statusCode);
+    http_response_code(200);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(['ok' => true, 'data' => $data], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-function ok_response(array $data = [], int $statusCode = 200): void
+function jsonErr(string $code, string $message, int $http = 400): void
 {
-    json_response([
-        'ok' => true,
-        'data' => $data,
-    ], $statusCode);
+    http_response_code($http);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(
+        ['ok' => false, 'error' => ['code' => $code, 'message' => $message]],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
 }
 
-function error_response(string $message, int $statusCode = 400, array $extra = []): void
+function requireMethod(string $method): void
 {
-    json_response(array_merge([
-        'ok' => false,
-        'error' => $message,
-    ], $extra), $statusCode);
-}
-
-function require_method(string $method): void
-{
-    if ($_SERVER['REQUEST_METHOD'] !== $method) {
-        header('Allow: ' . $method);
-        error_response('Method not allowed', 405);
+    if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== strtoupper($method)) {
+        jsonErr('method_not_allowed', 'HTTP method 不允許', 405);
     }
 }
 
-function read_request_data(): array
+function jsonUnexpectedError(Throwable $e): void
 {
-    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-
-    if (stripos($contentType, 'application/json') !== false) {
-        $rawBody = file_get_contents('php://input');
-        if ($rawBody === false || trim($rawBody) === '') {
-            return [];
-        }
-
-        $data = json_decode($rawBody, true);
-        if (!is_array($data)) {
-            error_response('Invalid JSON body', 400);
-        }
-
-        return $data;
-    }
-
-    return $_POST;
+    $message = defined('DEBUG_MODE') && DEBUG_MODE ? $e->getMessage() : '伺服器發生錯誤';
+    jsonErr('server_error', $message, 500);
 }
 

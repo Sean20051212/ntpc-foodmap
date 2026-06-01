@@ -1,28 +1,18 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../lib/response.php';
-require_once __DIR__ . '/../../lib/db.php';
-require_once __DIR__ . '/../../lib/auth_check.php';
+require_once __DIR__ . '/../../lib/bootstrap.php';
+require_once __DIR__ . '/../../lib/rate_limit.php';
 
-require_method('POST');
+requireMethod('DELETE');
+rateLimitCheck('reviews_write');
 
-$userId = require_auth();
-$data = read_request_data();
-$reviewId = (int) ($data['review_id'] ?? 0);
+$user = requireLogin();
+$input = getInput();
+$restaurantId = requireInt($input, 'restaurant_id', 1);
 
-if ($reviewId <= 0) {
-    error_response('review_id is required.', 400);
-}
+$stmt = db()->prepare('DELETE FROM reviews WHERE user_id = ? AND restaurant_id = ?');
+$stmt->execute([(int) $user['user_id'], $restaurantId]);
 
-$stmt = db()->prepare('DELETE FROM reviews WHERE review_id = :review_id AND user_id = :user_id');
-$stmt->execute([
-    'review_id' => $reviewId,
-    'user_id' => $userId,
-]);
-
-ok_response([
-    'removed' => $stmt->rowCount() > 0,
-    'review_id' => $reviewId,
-]);
+jsonOk(['deleted' => $stmt->rowCount() > 0]);
 
