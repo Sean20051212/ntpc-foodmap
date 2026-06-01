@@ -90,7 +90,7 @@ function restaurantParseFilters(array $input, array $overrides = []): array
         'user_lng' => $lng,
         'bbox' => $bbox,
         'keyword' => optionalString($input, 'keyword', 100, ''),
-        'limit' => requireLimit($input, 50, 200),
+        'limit' => requireLimit($input, 50, 1000),
         'offset' => requireOffset($input),
         'sort' => $sort,
     ];

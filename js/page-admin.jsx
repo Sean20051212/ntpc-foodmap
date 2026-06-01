@@ -72,7 +72,7 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
 function AdminRestaurants({ dicts }) {
   const [rows, setRows] = useState(null);
   const [edit, setEdit] = useState(null); // {id} or {id:null} for new
-  const load = () => api("GET", "/api/restaurants/list", { limit: 50, sort: "name_asc" }).then(r => setRows(r.restaurants));
+  const load = () => api("GET", "/api/restaurants/list", { limit: 1000, sort: "name_asc" }).then(r => setRows(r.restaurants));
   useEffect(() => { load(); }, []);
   const del = async (r) => { if (!(await confirmDialog({ title: "刪除餐廳？", body: `「${r.restaurant_name}」及其評論、收藏將一併刪除。`, ok: "刪除", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("已刪除"); load(); };
   return <div>
