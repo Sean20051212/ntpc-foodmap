@@ -100,27 +100,25 @@ Copy-Item -Recurse $src $dst -Exclude @("node_modules",".git","ntpc.zip")
 
 ### 6. 預設 admin 帳號
 
-`sql/database.sql` 中的 seed 用戶（`admin`、`foodie_mary`、`tech_guru`）密碼 hash 是 **placeholder**，**無法登入**。請用以下任一方式建立可登入的 admin：
+匯入 `sql/database.sql` 後，DB 內只有一筆預設管理員：
 
-**方式 A（推薦）：自助晉升**
-1. 用前端 `/register` 註冊一個帳號，例如 `myadmin`
-2. phpMyAdmin → SQL 分頁：
-   ```sql
-   UPDATE users SET is_admin=1 WHERE username='myadmin';
-   ```
+| 欄位 | 值 |
+|---|---|
+| username | `admin` |
+| password | `admin123` |
+| is_admin | 1 |
 
-**方式 B：直接重設 seed admin 密碼**
+> ⚠️ 上線 / 公開 demo 前請至少把密碼改掉。改密碼方法：以 admin 登入 → 個人頁 → 修改密碼，或直接 SQL：
+> ```powershell
+> & "C:\xampp\php\php.exe" -r "echo password_hash('新密碼', PASSWORD_BCRYPT);"
+> ```
+> ```sql
+> UPDATE users SET password_hash='<貼上 hash>' WHERE username='admin';
+> ```
 
-先用 PHP 算 bcrypt hash：
-```powershell
-& "C:\xampp\php\php.exe" -r "echo password_hash('你的密碼', PASSWORD_BCRYPT);"
-```
-
-再用輸出的 hash 更新：
+要新增一般使用者：用前端 `/register` 註冊即可。要把某帳號晉升為 admin：
 ```sql
-UPDATE users
-SET password_hash = '<貼上 hash>', is_admin = 1
-WHERE username = 'admin';
+UPDATE users SET is_admin=1 WHERE username='<該帳號>';
 ```
 
 ---
@@ -178,9 +176,8 @@ ntpc-foodmap/
 |---|---|---|---|---|
 | #1 | **CASCADE 刪除不觸發 trigger** — MySQL InnoDB 不會在 `ON DELETE CASCADE` 時跑 trigger，所以從 `users` 刪人 → `reviews` 連動刪 → 餐廳的 `rating_avg` / `rating_count` **不會被自動重算**，留著舊值 | 從 admin 刪用戶（或 SQL 直接 `DELETE FROM users`）後，被該用戶評過的餐廳評分變成舊資料。同理刪 `restaurants` 連動刪 `reviews` 時，rating 統計也對不上（但餐廳本身已被刪，影響較小） | C（後端使用者類） / A（DB） | 跑 SQL 重算所有餐廳評分： `UPDATE restaurants r LEFT JOIN (SELECT restaurant_id, AVG(rating) avg_rating, COUNT(*) cnt FROM reviews GROUP BY restaurant_id) rv ON rv.restaurant_id = r.restaurant_id SET r.rating_avg = COALESCE(rv.avg_rating, 0), r.rating_count = COALESCE(rv.cnt, 0);` |
 | #2 | **餐廳詳情頁沒有 Google Maps 連結** — DB 內已有 `google_place_id`，但 [js/page-detail.jsx](js/page-detail.jsx) 沒做「在 Google Maps 開啟」按鈕 | 使用者無法直接從詳情頁跳到 Google Maps 看路線/評論/照片 | D（前端 + Maps） | 暫無；要做就加一顆連到 `https://www.google.com/maps/place/?q=place_id:<google_place_id>` 的按鈕 |
-| #3 | **seed 三筆 user 密碼 hash 是假的** — `sql/database.sql` 內 admin / foodie_mary / tech_guru 的 password_hash 是 placeholder | 無法用 seed 帳號登入；新人 import database 後一定要自建 admin | A（DB） | 見上面「預設 admin 帳號」段落 |
-| #4 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
-| #5 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
+| #3 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
+| #4 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
 
 ---
 
