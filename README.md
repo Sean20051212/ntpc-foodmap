@@ -1,6 +1,6 @@
 # 新北市美食地圖網站 (NTPC Food Map)
 
-> 大學課程作業 · 五人協作 · PHP + MySQL + Google Maps API
+> 大學課程作業 · 五人協作 · PHP + MySQL + React 原型前端
 
 以新北市政府觀光旅遊局餐飲業者開放資料（[dataset/123086](https://data.gov.tw/dataset/123086)）為基礎，提供地址搜尋、條件篩選、路徑規劃、隨機輪盤等功能。
 
@@ -8,11 +8,24 @@
 
 ## 📋 專案資訊
 
-- **技術棧**：PHP 8.x + MySQL 8.x + 原生 HTML/CSS/JS + Google Maps API
-- **開發環境**：XAMPP（Windows）
-- **部署**：免費 PHP host（InfinityFree 或校內主機）
-- **資料庫**：11 張表（users / districts / district_adjacency / restaurants / restaurant_phones / restaurant_photos / opentime / tags / restaurant_tags_mapping / reviews / favorites）+ 觸發器自動維護 `rating_avg` / `rating_count`
-- **詳細規格**：見 `docs/` 資料夾
+- **後端**：PHP 8.x + MySQL 8.x（XAMPP）
+- **前端**：React 18 + Babel（瀏覽器即時編譯）+ Leaflet 地圖
+- **資料庫**：11 張表 + 3 個觸發器自動維護 `rating_avg` / `rating_count`
+- **規格文件**：[docs/design-audit.md](docs/design-audit.md)、[docs/backend-plan.md](docs/backend-plan.md)、[docs/frontend-plan.md](docs/frontend-plan.md)
+
+---
+
+## 🚦 目前實作狀態
+
+| 區塊 | 狀態 |
+|---|---|
+| `sql/database.sql` | ✅ schema + 觸發器 + 29 區 / 46 鄰接 / 14 分類 / ~690 家餐廳 |
+| `index.html` + `js/*.jsx` + `assets/app.css` | ✅ Claude Design 高保真原型（React via Babel） |
+| `api/**/*.php` 後端 API | ✅ 全部 27 支端點完成（auth / restaurants / favorites / reviews / dicts / geo / users / admin） |
+| `lib/*.php` 共用模組 | ✅ db / response / input / auth / bootstrap / rate_limit / geocode / restaurants / admin / geo |
+| Google Maps API 串接 | 🟡 後端代打 `/api/geo/geocode` 已完成；前端 Maps JS API 尚未整合 |
+
+> 整合進度與分支：目前所有改動在 `feat/integrate-prototype` 分支上，main 還是舊狀態。等 review 通過再合進 main。
 
 ---
 
@@ -22,8 +35,8 @@
 |---|---|---|
 | A | DB + 部署 | schema、CSV 匯入、分類腳本、host |
 | B | 後端 API（餐廳類） | 搜尋、篩選、詳情、輪盤池 |
-| C | 後端 API（使用者類） | 註冊登入、收藏、評論、歷史、共用 lib |
-| D | 前端 + Google Maps | 首頁、地圖、搜尋、路徑、API 代理 |
+| C | 後端 API（使用者類） | 註冊登入、收藏、評論、共用 lib |
+| D | 前端 + Google Maps | 地圖、搜尋、路徑、API 代理 |
 | E | 前端 + 簡報 | 輪盤、登入註冊頁、收藏歷史頁、簡報 |
 
 ---
@@ -32,66 +45,81 @@
 
 ### 1. 環境準備
 
-確認本機有裝：
-
 - [Git for Windows](https://git-scm.com/download/win)
-- [XAMPP](https://www.apachefriends.org/)（內含 PHP 8.x + MySQL + phpMyAdmin）
-- [VS Code](https://code.visualstudio.com/)（推薦）
-- [Postman](https://www.postman.com/)（B、C、D 測試 API 用）
+- [XAMPP](https://www.apachefriends.org/)（含 PHP 8.x + MySQL + phpMyAdmin）
+- [VS Code](https://code.visualstudio.com/)
+- 網路連線（前端從 CDN 載 React / Babel / Leaflet）
 
 ### 2. Clone 專案
 
 ```bash
-git clone https://github.com/[YOUR_ORG]/ntpc-foodmap.git
+git clone https://github.com/Sean20051212/ntpc-foodmap.git
 cd ntpc-foodmap
 ```
 
-### 3. 設定設定檔與環境變數
-
-本專案有兩份設定檔，**兩份都在 `.gitignore` 內，永遠不會被 commit**：
+### 3. 設定 `config.php`
 
 ```bash
-# config.php：PHP 端讀取的主要設定（DB / API key / Session / 限流）
 copy config.php.example config.php
-
-# .env：備用 / 未來改用 vlucas/phpdotenv 時用，目前 PHP 不會自動讀
-# 若已存在請略過；專案根目錄會有一份範例（DB / Google key / DEBUG_MODE）
 ```
 
 打開 `config.php`，填入：
-- 本機 DB 帳密（XAMPP 預設 `root` / 無密碼）
-- Google Maps API key（Geocoding API / Places API (New) / Maps JavaScript API 共用同一把 key，但建議在 GCP Console 分「鎖 IP（後端）」「鎖 referrer（前端）」兩把）
+- DB 帳密（XAMPP 預設 `root` / 無密碼）
+- `GOOGLE_MAPS_KEY_BACKEND`（後端 `/api/geo/geocode` 用，建議鎖 IP）
+- `GOOGLE_MAPS_KEY_FRONTEND`（前端 Maps JS 用，建議鎖 referrer）
+- `DEBUG_MODE = true`（開發時開啟，server_error 才會回真實訊息）
+
+> ⚠️ `config.php` 永遠不會被 commit（已在 `.gitignore`），含 API key 跟密碼。
 
 ### 4. 建立資料庫
 
-開啟 XAMPP，啟動 Apache + MySQL。打開 phpMyAdmin（http://localhost/phpmyadmin）：
+phpMyAdmin (http://localhost/phpmyadmin) 執行：
 
 ```sql
 CREATE DATABASE ntpc_foodmap DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-匯入完整資料庫（一份檔案搞定，schema + 觸發器 + 所有資料）：
+然後匯入 [sql/database.sql](sql/database.sql)（含 schema + 觸發器 + 全部 seed 資料）。
 
-```bash
-# 在 XAMPP 的 mysql/bin 下執行（或用 phpMyAdmin 介面匯入 sql/database.sql）
-mysql -u root ntpc_foodmap < sql/database.sql
+### 5. 部署到 XAMPP
+
+**注意：** `htdocs` 下是專案的 **複製**（不是 symlink）。每次改 code 都要重新覆製：
+
+```powershell
+$src = "C:\Users\User\Documents\ntpc-foodmap"
+$dst = "C:\xampp\htdocs\ntpc-foodmap"
+Remove-Item -Recurse -Force $dst -ErrorAction SilentlyContinue
+Copy-Item -Recurse $src $dst -Exclude @("node_modules",".git","ntpc.zip")
 ```
 
-`sql/database.sql` 是用 `mysqldump` 從已補強的本機 DB 匯出的快照，包含：
-- 11 張表結構 + 3 個觸發器
-- 29 區 + 46 條鄰接 + 14 個分類
-- 約 690 筆真實餐廳（已用 Google Places API 補上 `google_place_id`、`price_level`、每店多 5 張照片）
+確認 XAMPP Apache + MySQL 都啟動後，瀏覽器開：
+**http://localhost/ntpc-foodmap/**（入口是根目錄的 `index.html`，不是 `/pages/...`）
 
-> 若要從原始 CSV 重新產生資料庫，需要先有 `restaurants.csv`（未進 git）+ 跑：
-> ```bash
-> node scripts/import_restaurants.mjs   # 從 CSV 產出 sql/seed.sql（已過時）
-> node scripts/enrich_google.mjs        # 用 Google API 補強
+每次改完前端 / 後端 → 重新部署 → 瀏覽器按 **Ctrl+F5**（不是 F5）強制清快取。
+或開 DevTools「Disable cache」開發期間都用這個。
+
+### 6. 預設 admin 帳號
+
+匯入 `sql/database.sql` 後，DB 內只有一筆預設管理員：
+
+| 欄位 | 值 |
+|---|---|
+| username | `admin` |
+| password | `admin123` |
+| is_admin | 1 |
+
+> ⚠️ 上線 / 公開 demo 前請至少把密碼改掉。改密碼方法：以 admin 登入 → 個人頁 → 修改密碼，或直接 SQL：
+> ```powershell
+> & "C:\xampp\php\php.exe" -r "echo password_hash('新密碼', PASSWORD_BCRYPT);"
 > ```
-> 一般情況直接用 `database.sql` 即可。
+> ```sql
+> UPDATE users SET password_hash='<貼上 hash>' WHERE username='admin';
+> ```
 
-### 5. 放進 XAMPP 並開啟
-
-把整個專案資料夾放到 `C:\xampp\htdocs\` 下，瀏覽器開 `http://localhost/ntpc-foodmap/pages/index.php`。
+要新增一般使用者：用前端 `/register` 註冊即可。要把某帳號晉升為 admin：
+```sql
+UPDATE users SET is_admin=1 WHERE username='<該帳號>';
+```
 
 ---
 
@@ -99,44 +127,57 @@ mysql -u root ntpc_foodmap < sql/database.sql
 
 ```
 ntpc-foodmap/
-├── api/                  # 後端 PHP API（⚠️ 目前都是空的 .gitkeep，尚未實作）
-│   ├── auth/             # 註冊登入登出（C）
-│   ├── favorites/        # 收藏（C）
-│   ├── reviews/          # 評論（C）
-│   ├── history/          # 歷史紀錄（C）
-│   ├── restaurants/      # 餐廳搜尋詳情（B）
-│   ├── maps/             # Google Maps 代理（D）
-│   └── dicts/            # 字典資料（B）
+├── index.html               # 前端入口（React via Babel）
+├── js/                      # 前端 JSX
+│   ├── api.js               # fetch wrapper（唯一允許的前端邏輯）
+│   ├── ui.jsx               # 共用元件
+│   ├── app.jsx              # router + 主入口
+│   ├── page-*.jsx           # 各頁面（index / explore / detail / profile / auth / admin）
+│   ├── mock-backend.js      # 保留供參考，目前不載入
+│   └── mock-data.js         # 同上
 ├── assets/
-│   ├── js/               # 前端 JavaScript（D、E）
-│   └── css/              # 樣式表（D、E）
-├── pages/                # 前端頁面（D、E）— 目前多數頁仍用 mock data
-├── lib/                  # 共用 PHP（C）— ⚠️ 尚未實作（待寫 db.php / auth.php / response.php / rate_limit.php）
+│   └── app.css              # 全站樣式
+├── api/                     # 後端 PHP API（27 支端點）
+│   ├── auth/                # register / login / logout / me / change_password
+│   ├── restaurants/         # list / count / detail / recommendations / carousel / nearby_ntpc / wheel_*
+│   ├── favorites/           # toggle / list
+│   ├── reviews/             # upsert / delete / by_restaurant / by_user
+│   ├── dicts/               # districts / tags
+│   ├── geo/                 # locate / geocode
+│   ├── users/               # profile
+│   ├── admin/               # restaurant/* / photo/* / users/*
+│   └── history/             # （後端額外做的，前端目前未使用）
+├── lib/                     # 共用 PHP 模組
+│   ├── bootstrap.php        # 啟動：載入 db / response / input / auth
+│   ├── db.php               # PDO 連線
+│   ├── response.php         # jsonOk / jsonErr / requireMethod
+│   ├── input.php            # getInput / requireString / requireInt 等
+│   ├── auth.php             # requireLogin / publicUser
+│   ├── rate_limit.php       # rateLimitCheck
+│   ├── geocode.php          # Google Geocoding 代打
+│   ├── restaurants.php      # 共用查詢與篩選邏輯
+│   ├── geo.php / admin.php  # 對應領域 helper
 ├── sql/
-│   ├── schema.sql        # 11 張表 + 觸發器 + 29 區/46 鄰接/14 分類的 seed
-│   └── seed.sql          # 693 筆真實餐廳資料（由 import_restaurants.mjs 產生）
+│   └── database.sql         # 完整 schema + 觸發器 + 全部 seed
 ├── scripts/
-│   └── import_restaurants.mjs   # 讀 restaurants.csv → 產出 sql/seed.sql
-├── data/                 # （未提交）資料整理工作目錄
-├── restaurants.csv       # （未提交）699 筆原始整合資料，保留待 Google API 補強
-├── docs/                 # 文件、規格、簡報
-├── config.php            # （不在 Git 中，本機自建）
-├── config.php.example    # 設定檔範本
-├── .env                  # （不在 Git 中）備用環境變數
-├── .gitignore
+│   ├── import_restaurants.mjs   # CSV → INSERT
+│   └── enrich_google.mjs        # Google Places 補欄位
+├── docs/                    # 規格與計畫
+├── config.php               # （不在 Git）DB / API key
+├── config.php.example       # 設定檔範本
 └── README.md
 ```
 
-### 目前實作狀態
+---
 
-| 區塊 | 狀態 |
-|---|---|
-| `sql/schema.sql` + `sql/seed.sql` | ✅ 完成，可直接 import |
-| `pages/*.php` 前端頁 | 🟡 UI 完成，但 **資料是寫死的 mock data**，未串 DB |
-| `pages/login.php` | ⚠️ 假登入（任何密碼都會過），**上線前必須換掉** |
-| `api/**/*.php` 後端 API | ❌ 尚未實作 |
-| `lib/*.php` 共用模組 | ❌ 尚未實作（`config.php` 還只是定義常數，沒有 DB 連線函式） |
-| Google Maps API 串接 | ❌ `pages/index.php` 還是 `YOUR_FRONTEND_KEY_HERE` placeholder |
+## ⚠️ 已知問題 / 待修
+
+| 編號 | 問題 | 影響 | 應由誰修 | 短期 workaround |
+|---|---|---|---|---|
+| #1 | **CASCADE 刪除不觸發 trigger** — MySQL InnoDB 不會在 `ON DELETE CASCADE` 時跑 trigger，所以從 `users` 刪人 → `reviews` 連動刪 → 餐廳的 `rating_avg` / `rating_count` **不會被自動重算**，留著舊值 | 從 admin 刪用戶（或 SQL 直接 `DELETE FROM users`）後，被該用戶評過的餐廳評分變成舊資料。同理刪 `restaurants` 連動刪 `reviews` 時，rating 統計也對不上（但餐廳本身已被刪，影響較小） | C（後端使用者類） / A（DB） | 跑 SQL 重算所有餐廳評分： `UPDATE restaurants r LEFT JOIN (SELECT restaurant_id, AVG(rating) avg_rating, COUNT(*) cnt FROM reviews GROUP BY restaurant_id) rv ON rv.restaurant_id = r.restaurant_id SET r.rating_avg = COALESCE(rv.avg_rating, 0), r.rating_count = COALESCE(rv.cnt, 0);` |
+| #2 | **餐廳詳情頁沒有 Google Maps 連結** — DB 內已有 `google_place_id`，但 [js/page-detail.jsx](js/page-detail.jsx) 沒做「在 Google Maps 開啟」按鈕 | 使用者無法直接從詳情頁跳到 Google Maps 看路線/評論/照片 | D（前端 + Maps） | 暫無；要做就加一顆連到 `https://www.google.com/maps/place/?q=place_id:<google_place_id>` 的按鈕 |
+| #3 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
+| #4 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
 
 ---
 
@@ -144,76 +185,33 @@ ntpc-foodmap/
 
 ### 重要原則
 
-1. **絕對不能直接 push main**：所有改動必須走 Pull Request
-2. **絕對不能 commit `config.php`**：含 API key 和密碼，會被偷刷錢
-3. **每個功能開獨立 branch**：命名規則 `feat/角色字母-功能名`，例如 `feat/B-nearby-api`
-4. **commit 前先 pull main**：避免基底是舊的，造成大量衝突
-5. **commit message 要有意義**：用 `feat:` / `fix:` / `docs:` 等前綴
+1. **絕對不能直接 push main**：所有改動走 Pull Request
+2. **絕對不能 commit `config.php`**：含 API key
+3. **每個功能開獨立 branch**：命名 `feat/角色字母-功能名` 或 `feat/功能描述`
+4. **commit 前先 pull main**
+5. **commit message 用英文**，前綴 `feat:` / `fix:` / `docs:` / `refactor:` / `style:` / `chore:`
 
-### 日常工作流程
+### 日常流程
 
 ```bash
-# 1. 確保 main 是最新的
 git checkout main
 git pull origin main
+git checkout -b feat/B-something
 
-# 2. 開自己的功能分支
-git checkout -b feat/B-nearby-api
+# 寫 code、測試...
 
-# 3. 寫 code、存檔、測試...
-
-# 4. 確認改了什麼
 git status
 git diff
-
-# 5. 提交變更
 git add .
-git commit -m "feat: 完成 nearby 搜尋 API"
+git commit -m "feat: 完成某功能"
+git push origin feat/B-something
+# 到 GitHub 開 PR → 指派 reviewer → merge
 
-# 6. 推到 GitHub
-git push origin feat/B-nearby-api
-
-# 7. 到 GitHub 網頁開 Pull Request → 找其他人 review → merge
-
-# 8. 合併完成後刪除本機分支
+# 合併後清理本機分支
 git checkout main
 git pull origin main
-git branch -d feat/B-nearby-api
+git branch -d feat/B-something
 ```
-
-### Commit Message 格式
-
-| 前綴 | 用途 | 範例 |
-|---|---|---|
-| `feat:` | 新功能 | `feat: 完成輪盤動畫` |
-| `fix:` | 修 bug | `fix: nearby API 經緯度順序錯誤` |
-| `docs:` | 改文件 | `docs: 更新 API 規格` |
-| `refactor:` | 重構但功能不變 | `refactor: 抽出共用查詢函式` |
-| `style:` | 純樣式調整 | `style: 統一按鈕圓角` |
-| `chore:` | 雜項（建構、依賴） | `chore: 更新 .gitignore` |
-
-### 處理衝突
-
-當兩人改到同一檔案會衝突：
-
-```bash
-git checkout feat/B-nearby-api
-git pull origin main           # 拉最新 main 進你的分支
-# 若有衝突，Git 會在檔案中標出 <<<<<<< ======= >>>>>>>
-# 用 VS Code 開啟，會有「Accept Current / Incoming / Both」按鈕，點選後存檔
-git add .
-git commit -m "merge: 解決與 main 的衝突"
-git push
-```
-
-### Pull Request 規範
-
-開 PR 時請填：
-
-- **標題**：與 commit message 一致的格式
-- **內容**：簡述改了什麼、為什麼改、怎麼測試
-- **Reviewer**：至少指派 1 位組員 review
-- **Linked Issue**（若有）：關聯到 GitHub Issue
 
 ---
 
@@ -221,30 +219,29 @@ git push
 
 | 動作 | 後果 | 怎麼避免 |
 |---|---|---|
-| commit `config.php` | API key 外洩、Google 帳單爆掉 | 加 `.gitignore`、commit 前 `git status` 檢查 |
-| commit `node_modules/` | repo 變幾百 MB、pull 不動 | 加 `.gitignore` |
-| 直接 push main | 跳過 review、可能弄壞所有人 | 分支保護已開啟，會被擋下 |
-| force push（`git push -f`） | 蓋掉別人的提交 | 永遠不要對共用 branch 用 |
-| 大檔案塞進 repo | 整個 repo 變慢 | DB 匯出檔放 Google Drive 分享連結 |
+| commit `config.php` / `.env` | API key 外洩、Google 帳單爆掉 | `.gitignore` 已設、commit 前 `git status` 檢查 |
+| commit `node_modules/` | repo 變幾百 MB | `.gitignore` 已設 |
+| 直接 push main | 跳過 review | 分支保護 |
+| force push 共用 branch | 蓋掉別人提交 | 永遠不要 |
+| 大檔案塞進 repo | repo 變慢 | 二進制檔（zip、dump）放外部 |
 
-**萬一不小心 commit 了 `config.php` 或 `.env`**：
-
-1. 立刻把 Google Maps API key 在 GCP Console 刪掉、重新申請（Git 歷史清不乾淨，key 已外洩）
+**萬一 commit 了密鑰：**
+1. 立刻去 GCP Console 刪 / 重新申請 key
 2. 改 DB 密碼
-3. 通知所有組員不要 pull 那個 commit
-4. 由負責人處理 Git 歷史清除（用 `git filter-branch` 或 BFG Repo-Cleaner）
-
-> 過去曾發生組員在 `pages/index.php` 寫死 Google Maps key 後 commit；現已改回 `YOUR_FRONTEND_KEY_HERE` placeholder。前端載入 key 的正規做法：從 `config.php` 讀 `GOOGLE_MAPS_KEY_FRONTEND` 後 echo 進 script src。
+3. 通知所有人不要 pull 那個 commit
+4. 由負責人清 Git 歷史（`git filter-branch` 或 BFG）
 
 ---
 
 ## 📋 文件與規格
 
-所有規格文件放在 `docs/`：
+| 檔案 | 給誰 | 內容 |
+|---|---|---|
+| [docs/design-audit.md](docs/design-audit.md) | 共用 | schema 相容性審查 + 7 項已確認決策 |
+| [docs/backend-plan.md](docs/backend-plan.md) | B、C | 27 支 API 端點完整規格 + lib/ + curl 驗收 |
+| [docs/frontend-plan.md](docs/frontend-plan.md) | D、E | 嚴禁清單 + 各頁面 wireframe + API 呼叫表 |
 
-- `docs/spec.pdf`：五人完整規格文件
-- `docs/api-spec.md`：API 規格（B、C 維護）
-- `docs/er-diagram.png`：ER 圖（A 維護）
+> **原則：** 所有運算寫在後端，前端只負責顯示。任何距離計算、篩選邏輯、抽選邏輯一律不准寫在前端。
 
 ---
 
@@ -252,28 +249,32 @@ git push
 
 | 用途 | 工具 |
 |---|---|
-| Code 編輯 | VS Code + GitLens 擴充 |
-| API 測試 | Postman |
+| Code 編輯 | VS Code + GitLens |
+| API 測試 | Postman / DevTools Network |
 | DB GUI | phpMyAdmin（XAMPP 內建）或 HeidiSQL |
 | 即時溝通 | Discord |
-| 任務追蹤 | GitHub Projects（看板） |
-| ER 圖 | dbdiagram.io |
 
 ---
 
 ## 🆘 常見問題
 
-**Q: pull 出現「Your local changes would be overwritten」？**  
-A: 先 `git stash` 把本機改動暫存，pull 完再 `git stash pop`。
+**Q: 改了 code 但網頁沒變？**
+A: (1) 沒重新部署到 `htdocs`（複製不是 symlink）。(2) 沒按 Ctrl+F5 強制清快取。
 
-**Q: 不小心在 main 上改了 code 怎麼辦？**  
-A: `git stash` → `git checkout -b feat/xxx-yyy` → `git stash pop` → 在新分支 commit。
+**Q: 登入時跳「伺服器回應格式錯誤 (HTTP 200)」？**
+A: 後端 PHP fatal 噴成 response body。看 `C:\xampp\apache\logs\error.log` 最後幾行找原因；最常見是 `config.php` 路徑不對或 DB 連不上。
 
-**Q: VS Code 解衝突按了 Accept Current/Incoming，分別是哪邊？**  
-A: Current = 你的版本，Incoming = 對方版本。看清楚再點。
+**Q: 後台餐廳列表只顯示 50 家？**
+A: 已修正成上限 1000。沒看到改動要重新部署 + Ctrl+F5。
 
-**Q: 我的 commit 訊息打錯了怎麼辦？**  
-A: 若還沒 push，`git commit --amend -m "新訊息"`。已 push 就算了，不要 force push。
+**Q: 刪了用戶後餐廳評分不對？**
+A: 見「已知問題 #1」，跑那段 UPDATE 重算即可。
+
+**Q: pull 出現「Your local changes would be overwritten」？**
+A: `git stash` → `git pull` → `git stash pop`。
+
+**Q: 不小心在 main 改了 code？**
+A: `git stash` → `git checkout -b feat/xxx` → `git stash pop` → commit。
 
 ---
 
