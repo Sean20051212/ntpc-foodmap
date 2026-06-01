@@ -64,7 +64,7 @@ function PageProfile({ me, onAuth }) {
   if (!prof) return <Loading pad={80} />;
 
   const ReviewList = ({ items }) => items.length === 0 ? <Empty icon="💬" title="還沒有評論" />
-    : <div className="col gap12">{items.map((rv, i) => <div key={i} className="card row" style={{ gap: 0, cursor: "pointer" }} onClick={() => navigate("#/detail?id=" + rv.restaurant_id + "#review-" + uid)}>
+    : <div className="col gap12">{items.map((rv, i) => <div key={i} className="card row" style={{ gap: 0, cursor: "pointer" }} onClick={() => navigate(detailReviewRoute(rv.restaurant_id, uid))}>
       <Photo url={rv.main_photo_url} style={{ flex: "0 0 96px", alignSelf: "stretch" }} />
       <div className="grow" style={{ padding: "12px 14px" }}>
         <div className="row between center"><div className="h3">{rv.restaurant_name}</div><Stars value={rv.rating} size={14} /></div>

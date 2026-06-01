@@ -94,7 +94,7 @@ window.SEED = (function () {
 
   // 使用者：user_id=1 為 super admin（不可改/刪）
   const users = [
-    { user_id: 1, username: "admin", password: "admin1234", is_admin: 1, created_at: "2024-01-01 09:00:00" },
+    { user_id: 1, username: "admin", password: "admin123", is_admin: 1, created_at: "2024-01-01 09:00:00" },
     { user_id: 2, username: "alice", password: "alice1234", is_admin: 0, created_at: "2024-03-12 10:00:00" },
     { user_id: 3, username: "bob", password: "bob12345", is_admin: 1, created_at: "2024-05-20 14:00:00" },
     { user_id: 4, username: "carol", password: "carol1234", is_admin: 0, created_at: "2024-08-01 19:00:00" }

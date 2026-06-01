@@ -8,14 +8,27 @@ const priceText = (lv) => lv ? "$".repeat(lv) : "—";
 const photoFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
 function fmtDate(s) { return (s || "").slice(0, 10); }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function reviewAnchorId(userId) { return "review-" + userId; }
+function detailReviewRoute(restaurantId, userId) { return "#/detail?id=" + restaurantId + "#" + reviewAnchorId(userId); }
+function googleMapsUrl(r) {
+  if (!r) return "https://www.google.com/maps";
+  if (r.google_place_id) return "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(r.google_place_id);
+  const q = r.latitude != null && r.longitude != null
+    ? `${r.latitude},${r.longitude}`
+    : [r.restaurant_name, r.address].filter(Boolean).join(" ");
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
 
 /* ---------- router ---------- */
 function parseRoute() {
   const h = location.hash.replace(/^#/, "") || "/";
-  const [path, qs] = h.split("?");
+  const hashAt = h.indexOf("#");
+  const routeText = hashAt >= 0 ? h.slice(0, hashAt) : h;
+  const anchor = hashAt >= 0 ? decodeURIComponent(h.slice(hashAt + 1)) : "";
+  const [path, qs] = routeText.split("?");
   const query = {};
   new URLSearchParams(qs || "").forEach((v, k) => { query[k] = v; });
-  return { path, query };
+  return { path, query, anchor };
 }
 function navigate(to) { location.hash = to; }
 function useRoute() {
@@ -198,9 +211,10 @@ function SearchBar({ initial = "", autoFocus }) {
 function Navbar({ me, onAuth }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef();
+  const route = useRoute();
   useEffect(() => { const f = e => { if (ref.current && !ref.current.contains(e.target)) setMenu(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
   const logout = async () => { setMenu(false); try { await api("POST", "/api/auth/logout"); } catch (e) {} onAuth(); toast("已登出"); navigate("#/login"); };
-  return <header className="nav">
+  return <header className={"nav" + (route.path === "/explore" ? " nav-explore" : "")}>
     <div className="nav-inner">
       <div className="brand nav-brand" onClick={() => navigate("#/")}><span className="brand-mark">🍜</span><span>新北美食地圖</span></div>
       <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>
@@ -220,4 +234,4 @@ function Navbar({ me, onAuth }) {
   </header>;
 }
 
-Object.assign(window, { useState, useEffect, useRef, useMemo, useCallback, navigate, useRoute, parseRoute, toast, ToastHost, ConfirmHost, confirmDialog, Modal, Stars, Avatar, Photo, Loading, Empty, OpenBadge, useApi, RestaurantCard, SearchBar, Navbar, Tags, priceText, fmtDate, debounce });
+Object.assign(window, { useState, useEffect, useRef, useMemo, useCallback, navigate, useRoute, parseRoute, toast, ToastHost, ConfirmHost, confirmDialog, Modal, Stars, Avatar, Photo, Loading, Empty, OpenBadge, useApi, RestaurantCard, SearchBar, Navbar, Tags, priceText, fmtDate, debounce, reviewAnchorId, detailReviewRoute, googleMapsUrl });

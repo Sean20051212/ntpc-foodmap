@@ -232,6 +232,7 @@ function restaurantNormalizeListRow(array $row): array
         'description' => $row['description'],
         'address' => $row['address'],
         'zipcode' => $row['zipcode'],
+        'district_name' => $row['district_name'],
         'latitude' => (float) $row['latitude'],
         'longitude' => (float) $row['longitude'],
         'rating_avg' => (float) $row['rating_avg'],
@@ -314,6 +315,7 @@ function restaurantFetchList(array $filters): array
             r.description,
             r.address,
             r.zipcode,
+            d.district_name,
             r.latitude,
             r.longitude,
             r.rating_avg,
@@ -324,6 +326,7 @@ function restaurantFetchList(array $filters): array
             CASE WHEN ' . restaurantOpenNowSql() . ' THEN 1 ELSE 0 END AS is_open_now,
             ' . $favoriteSelect . '
         FROM restaurants r
+        LEFT JOIN districts d ON d.zipcode = r.zipcode
         LEFT JOIN restaurant_photos p ON p.restaurant_id = r.restaurant_id AND p.is_main = 1'
         . $favoriteJoin
         . $where

@@ -30,7 +30,7 @@ INSERT INTO `users` (`user_id`, `username`, `password_hash`, `is_admin`)
 VALUES (1, 'admin', '__REPLACE_WITH_BCRYPT_HASH__', 1);
 ```
 
-`__REPLACE_WITH_BCRYPT_HASH__` 由你執行 `php -r "echo password_hash('admin1234', PASSWORD_DEFAULT);"` 算出後貼回。**不可在 git 留明文密碼**；commit message 提醒使用者首次登入後立刻在前端改密碼。
+`__REPLACE_WITH_BCRYPT_HASH__` 由你執行 `php -r "echo password_hash('admin123', PASSWORD_DEFAULT);"` 算出後貼回。**不可在 git 留明文密碼**；commit message 提醒使用者首次登入後立刻在前端改密碼。
 
 ---
 

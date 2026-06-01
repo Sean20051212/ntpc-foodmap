@@ -40,15 +40,37 @@ function FilterPanel({ dicts, f, set, count, onClear }) {
 function ExploreMap({ restaurants, center, onFav, onIdle }) {
   const elRef = useRef(), mapRef = useRef(), layerRef = useRef(), favRef = useRef(onFav);
   favRef.current = onFav;
+  const invalidateMap = useCallback(() => {
+    const el = elRef.current, map = mapRef.current;
+    if (!el || !map) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+    }
+  }, []);
   useEffect(() => {
     const map = L.map(elRef.current, { zoomControl: true, attributionControl: false }).setView([center.lat, center.lng], 14);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 20, subdomains: "abcd" }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     map.on("moveend", () => { const b = map.getBounds(); onIdle([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]); });
     mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 120);
-    return () => map.remove();
+    const t = setTimeout(invalidateMap, 120);
+    return () => { clearTimeout(t); map.remove(); mapRef.current = null; };
   }, []);
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const onResize = () => invalidateMap();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
+    if (ro) ro.observe(el);
+    window.addEventListener("resize", onResize);
+    const t = setTimeout(onResize, 250);
+    return () => {
+      clearTimeout(t);
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [invalidateMap]);
   useEffect(() => { if (mapRef.current) mapRef.current.setView([center.lat, center.lng], mapRef.current.getZoom()); }, [center.lat, center.lng]);
   useEffect(() => {
     const lg = layerRef.current; if (!lg) return; lg.clearLayers();
@@ -58,7 +80,8 @@ function ExploreMap({ restaurants, center, onFav, onIdle }) {
       m.bindPopup(() => buildPopup(r, favRef.current), { closeButton: true, offset: [0, -28] });
     });
   }, [restaurants]);
-  return <div ref={elRef} style={{ height: "100%" }} />;
+  useEffect(() => { invalidateMap(); }, [restaurants, invalidateMap]);
+  return <div ref={elRef} className="map-canvas" />;
 }
 function buildPopup(r, onFav) {
   const div = document.createElement("div"); div.className = "map-info";
@@ -73,13 +96,22 @@ function buildPopup(r, onFav) {
 }
 
 function WheelDock({ params, onClose }) {
-  const [pool, setPool] = useState(null), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false);
+  const SPIN_MS = 1250;
+  const [pool, setPool] = useState(null), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false), [spinId, setSpinId] = useState(0);
   useEffect(() => { api("GET", "/api/restaurants/wheel_pool", params).then(d => setPool(d.restaurant_ids.length)).catch(() => setPool(0)); }, []);
   const draw = async () => {
-    setSpinning(true); setExhausted(false);
+    if (spinning || pool === 0) return;
+    const startedAt = performance.now();
+    setSpinId(id => id + 1);
+    setSpinning(true); setExhausted(false); setResult(null);
     try {
       const d = await api("POST", "/api/restaurants/wheel_draw", params);
-      setTimeout(() => { setSpinning(false); if (d.exhausted) { setExhausted(true); setResult(null); } else setResult(d.restaurant); }, 1150);
+      const delay = Math.max(0, SPIN_MS - (performance.now() - startedAt));
+      setTimeout(() => {
+        setSpinning(false);
+        if (d.exhausted) { setExhausted(true); setResult(null); }
+        else setResult(d.restaurant);
+      }, delay);
     } catch (e) { setSpinning(false); toast(e.message, "err"); }
   };
   const reset = async () => { await api("POST", "/api/restaurants/wheel_reset", params); setExhausted(false); setResult(null); const d = await api("GET", "/api/restaurants/wheel_pool", params); setPool(d.restaurant_ids.length); toast("已重設輪盤"); };
@@ -88,7 +120,10 @@ function WheelDock({ params, onClose }) {
       <div className="h3">🎯 吃什麼輪盤</div><button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
     </div>
     <div style={{ padding: 18, overflow: "auto", flex: 1 }}>
-      <div className={"wheel-spin" + (spinning ? " spinning" : "")}><div className="wheel-ptr">▼</div>{spinning ? "" : "?"}</div>
+      <div className="wheel-stage">
+        <div className="wheel-ptr">▼</div>
+        <div key={spinId} className={"wheel-spin" + (spinning ? " spinning" : "")}><span>{spinning ? "" : "?"}</span></div>
+      </div>
       {exhausted ? <Empty icon="🪹" title="候選都抽完了！" sub="重設後可重新抽過" action={<button className="btn btn-primary" onClick={reset}>重設輪盤</button>} />
         : result ? <div className="card row" style={{ marginBottom: 14, cursor: "pointer" }} onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>
           <Photo url={result.main_photo_url} style={{ flex: "0 0 84px", alignSelf: "stretch" }} />
@@ -185,7 +220,7 @@ function PageExplore({ me }) {
       <select className="select" style={{ width: "auto", padding: "8px 12px" }} value={f.sort} onChange={e => set("sort", e.target.value)}>
         {SORTS.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
-      <button className={"btn btn-sm " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => setWheel(w => !w)}>🎯 輪盤</button>
+      <button className={"btn btn-sm wheel-toggle " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => setWheel(w => !w)}>🎯 輪盤</button>
       <button className="btn btn-outline btn-sm show-m" onClick={() => setMFilter(true)}>⚙ 篩選{activeCount ? " (" + activeCount + ")" : ""}</button>
     </div>
 

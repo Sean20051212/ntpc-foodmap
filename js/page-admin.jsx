@@ -69,12 +69,57 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   </Modal>;
 }
 
+function AdminReviewsModal({ restaurant, onClose, onChanged }) {
+  const [data, setData] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+  const load = () => api("GET", "/api/reviews/by_restaurant", { restaurant_id: restaurant.restaurant_id, limit: 100, offset: 0 }).then(setData);
+  useEffect(() => { setData(null); load(); }, [restaurant.restaurant_id]);
+
+  const delReview = async (rv) => {
+    if (!(await confirmDialog({ title: "刪除評論？", body: `只會刪除「${rv.username}」對「${restaurant.restaurant_name}」的這筆評論，不會刪除餐廳資料。`, ok: "刪除評論", danger: true }))) return;
+    setBusyKey(rv.user_id);
+    try {
+      await api("POST", "/api/admin/review/delete", { restaurant_id: restaurant.restaurant_id, user_id: rv.user_id });
+      toast("評論已刪除", "ok");
+      await load();
+      onChanged();
+    } catch (e) {
+      toast(e.message, "err");
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return <Modal title={`評論管理：${restaurant.restaurant_name}`} onClose={onClose} width={680}>
+    {!data ? <Loading /> : data.reviews.length === 0 ? <Empty icon="☆" title="目前沒有評論" />
+      : <div className="col gap12">
+        <div className="small ink2">共 {data.total} 則評論。這裡刪除的是單一評論，不會刪除餐廳。</div>
+        {data.reviews.map(rv => <div key={rv.user_id} className="card" style={{ padding: 14 }}>
+          <div className="row between center gap12">
+            <div className="grow">
+              <div className="row center gap8 wrap">
+                <b>{rv.username}</b>
+                <Stars value={rv.rating} size={14} />
+                <span className="tiny muted">{fmtDate(rv.updated_at || rv.created_at)}</span>
+              </div>
+              {rv.comment ? <p className="ink2 small" style={{ margin: "8px 0 0", lineHeight: 1.6 }}>{rv.comment}</p> : <div className="tiny muted" style={{ marginTop: 8 }}>沒有留下文字評論</div>}
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ color: "#c83b30" }} disabled={busyKey === rv.user_id} onClick={() => delReview(rv)}>
+              {busyKey === rv.user_id ? "刪除中…" : "刪評論"}
+            </button>
+          </div>
+        </div>)}
+      </div>}
+  </Modal>;
+}
+
 function AdminRestaurants({ dicts }) {
   const [rows, setRows] = useState(null);
   const [edit, setEdit] = useState(null); // {id} or {id:null} for new
+  const [reviewTarget, setReviewTarget] = useState(null);
   const load = () => api("GET", "/api/restaurants/list", { limit: 1000, sort: "name_asc" }).then(r => setRows(r.restaurants));
   useEffect(() => { load(); }, []);
-  const del = async (r) => { if (!(await confirmDialog({ title: "刪除餐廳？", body: `「${r.restaurant_name}」及其評論、收藏將一併刪除。`, ok: "刪除", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("已刪除"); load(); };
+  const del = async (r) => { if (!(await confirmDialog({ title: "刪除整筆餐廳？", body: `這會刪除「${r.restaurant_name}」整筆餐廳資料，包含評論與收藏。若只想刪評論，請用「評論」按鈕。`, ok: "刪餐廳", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("餐廳已刪除"); load(); };
   return <div>
     <div className="row between center" style={{ marginBottom: 14 }}>
       <div className="ink2 small">{rows ? rows.length : "…"} 家餐廳</div>
@@ -87,12 +132,14 @@ function AdminRestaurants({ dicts }) {
         <td className="hide-m ink2">{r.district_name}</td>
         <td className="tnum">{r.rating_avg ? r.rating_avg.toFixed(1) : "—"} <span className="muted tiny">({r.rating_count})</span></td>
         <td><div className="row gap6" style={{ justifyContent: "flex-end" }}>
+          <button className="btn btn-outline btn-sm" onClick={() => setReviewTarget(r)}>評論</button>
           <button className="btn btn-outline btn-sm" onClick={() => setEdit({ id: r.restaurant_id })}>編輯</button>
-          <button className="btn btn-ghost btn-sm" style={{ color: "#c83b30" }} onClick={() => del(r)}>刪除</button>
+          <button className="btn btn-ghost btn-sm" style={{ color: "#c83b30" }} onClick={() => del(r)}>刪餐廳</button>
         </div></td>
       </tr>)}</tbody>
     </table>}
     {edit && <RestaurantForm dicts={dicts} editId={edit.id} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />}
+    {reviewTarget && <AdminReviewsModal restaurant={reviewTarget} onClose={() => setReviewTarget(null)} onChanged={load} />}
   </div>;
 }
 

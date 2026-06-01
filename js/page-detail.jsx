@@ -22,6 +22,30 @@ function ReviewForm({ rid, me, existing, onSaved }) {
   const [comment, setComment] = useState(existing ? existing.comment : "");
   const [open, setOpen] = useState(!!existing);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setRating(existing ? existing.rating : 0);
+    setComment(existing ? existing.comment : "");
+    setOpen(!!existing);
+    setHover(0);
+  }, [rid, existing]);
+
+  const remove = async () => {
+    if (!existing) return;
+    if (!(await confirmDialog({ title: "刪除評論？", body: "刪除後會同步更新這家餐廳的評分。", ok: "刪除", danger: true }))) return;
+    setBusy(true);
+    try {
+      await api("DELETE", "/api/reviews/delete", { restaurant_id: rid });
+      toast("評論已刪除", "ok");
+      setOpen(false);
+      onSaved();
+    } catch (e) {
+      toast(e.message, "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!me) return <div className="card" style={{ padding: 18, textAlign: "center" }}>
     <div className="ink2" style={{ marginBottom: 10 }}>請先登入才能留下評論</div>
     <button className="btn btn-primary btn-sm" onClick={() => navigate("#/login")}>前往登入</button>
@@ -43,7 +67,10 @@ function ReviewForm({ rid, me, existing, onSaved }) {
     <textarea className="textarea" maxLength={1000} placeholder="分享你的用餐心得…（最多 1000 字）" value={comment} onChange={e => setComment(e.target.value)} />
     <div className="row between center" style={{ marginTop: 12 }}>
       <span className="tiny muted">{comment.length}/1000</span>
-      <button className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? "送出中…" : existing ? "更新評論" : "送出評論"}</button>
+      <div className="row gap8">
+        {existing && <button className="btn btn-ghost" style={{ color: "#c83b30" }} disabled={busy} onClick={remove}>刪除評論</button>}
+        <button className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? "處理中…" : existing ? "更新評論" : "送出評論"}</button>
+      </div>
     </div>
   </div>;
 }
@@ -57,7 +84,12 @@ function PageDetail({ me }) {
 
   const loadDetail = () => api("GET", "/api/restaurants/detail", { id }).then(r => setD(r.restaurant)).catch(e => setErr(e));
   const loadReviews = () => api("GET", "/api/reviews/by_restaurant", { restaurant_id: id, limit: 20, offset: 0 }).then(r => setReviews(r)).catch(() => setReviews({ total: 0, reviews: [] }));
-  useEffect(() => { setD(null); setReviews(null); setErr(null); loadDetail(); loadReviews(); window.scrollTo(0, 0); }, [id]);
+  useEffect(() => { setD(null); setReviews(null); setErr(null); loadDetail(); loadReviews(); if (!route.anchor) window.scrollTo(0, 0); }, [id]);
+  useEffect(() => {
+    if (!reviews || !route.anchor) return;
+    const target = document.getElementById(route.anchor);
+    if (target) setTimeout(() => target.scrollIntoView({ block: "center" }), 0);
+  }, [reviews, route.anchor]);
 
   if (err) return <div className="container section"><Empty icon="🔍" title="找不到這家餐廳" action={<button className="btn btn-primary" onClick={() => navigate("#/explore")}>回探索</button>} /></div>;
   if (!d) return <Loading pad={80} />;
@@ -87,6 +119,7 @@ function PageDetail({ me }) {
             {d.phones.map((p, i) => <span key={i} className="tag">📞 {p}</span>)}
           </div>
           <p className="ink2" style={{ lineHeight: 1.7, maxWidth: 640 }}>{d.description}</p>
+          <a className="btn btn-outline btn-sm" href={googleMapsUrl(d)} target="_blank" rel="noopener noreferrer" style={{ marginTop: 10, marginBottom: 6 }}>Google Maps</a>
           <div className="small muted" style={{ marginTop: 6 }}>📍 {d.address}</div>
         </div>
         <button className={"btn " + (d.is_favorited ? "btn-primary" : "btn-outline")} onClick={toggleFav}>{d.is_favorited ? "♥ 已收藏" : "♡ 收藏"}</button>
@@ -119,7 +152,7 @@ function PageDetail({ me }) {
       <div style={{ marginTop: 30 }}>
         <div className="h2" style={{ marginBottom: 14 }}>全部評論 {reviews ? <span className="ink2" style={{ fontWeight: 600 }}>({reviews.total})</span> : ""}</div>
         {!reviews ? <Loading /> : reviews.reviews.length === 0 ? <Empty icon="💬" title="還沒有評論" sub="成為第一個分享心得的人" />
-          : reviews.reviews.map((rv, i) => <div key={i} className="review-item">
+          : reviews.reviews.map((rv, i) => <div key={i} id={reviewAnchorId(rv.user_id)} className="review-item">
             <div className="row between center">
               <div className="row center gap10" style={{ cursor: "pointer" }} onClick={() => navigate("#/profile?id=" + rv.user_id)}>
                 <Avatar name={rv.username} size={38} />
