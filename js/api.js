@@ -1,17 +1,56 @@
 /* =====================================================================
    api.js — 前端唯一允許的「邏輯」：fetch wrapper + 統一錯誤處理（frontend-plan §6）
-   原型版：body 改呼叫 MockBackend；正式版只要把 MockBackend.handle 換成
-   fetch(path,{method,credentials:'same-origin',...}) 即可，介面不變。
    ===================================================================== */
 class ApiError extends Error {
   constructor(code, message, http) { super(message); this.code = code; this.http = http; }
 }
 
+// 將 params 物件展開成 PHP 風格的 query string（陣列用 key[]=v1&key[]=v2）
+function buildQuery(params) {
+  const parts = [];
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v)) {
+      v.forEach(item => parts.push(`${encodeURIComponent(k)}[]=${encodeURIComponent(item)}`));
+    } else {
+      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    }
+  }
+  return parts.join("&");
+}
+
 async function api(method, path, params) {
-  // 正式：const res = await fetch(path+query, {method, credentials:'same-origin', headers, body});
-  //       const json = await res.json();
-  const json = await window.MockBackend.handle(method, path, params);
-  if (!json.ok) throw new ApiError(json.error.code, json.error.message);
+  params = params || {};
+  // 前端用 "/api/xxx/yyy" 表達端點；實際 PHP 檔案為 "api/xxx/yyy.php"（相對於部署根）
+  let url = path.replace(/^\//, "") + ".php";
+  const opts = { method, credentials: "same-origin", headers: {} };
+
+  if (method === "GET" || method === "DELETE") {
+    const qs = buildQuery(params);
+    if (qs) url += "?" + qs;
+  } else {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(params);
+  }
+
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    throw new ApiError("network_error", "網路連線失敗，請稍後再試", 0);
+  }
+
+  let json;
+  try {
+    json = await res.json();
+  } catch (e) {
+    throw new ApiError("bad_response", `伺服器回應格式錯誤 (HTTP ${res.status})`, res.status);
+  }
+
+  if (!json.ok) {
+    const err = json.error || { code: "unknown", message: "未知錯誤" };
+    throw new ApiError(err.code, err.message, res.status);
+  }
   return json.data;
 }
 
