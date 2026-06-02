@@ -175,9 +175,8 @@ ntpc-foodmap/
 | 編號 | 問題 | 影響 | 應由誰修 | 短期 workaround |
 |---|---|---|---|---|
 | #1 | **CASCADE 刪除不觸發 trigger** — MySQL InnoDB 不會在 `ON DELETE CASCADE` 時跑 trigger，所以從 `users` 刪人 → `reviews` 連動刪 → 餐廳的 `rating_avg` / `rating_count` **不會被自動重算**，留著舊值 | 從 admin 刪用戶（或 SQL 直接 `DELETE FROM users`）後，被該用戶評過的餐廳評分變成舊資料。同理刪 `restaurants` 連動刪 `reviews` 時，rating 統計也對不上（但餐廳本身已被刪，影響較小） | C（後端使用者類） / A（DB） | 跑 SQL 重算所有餐廳評分： `UPDATE restaurants r LEFT JOIN (SELECT restaurant_id, AVG(rating) avg_rating, COUNT(*) cnt FROM reviews GROUP BY restaurant_id) rv ON rv.restaurant_id = r.restaurant_id SET r.rating_avg = COALESCE(rv.avg_rating, 0), r.rating_count = COALESCE(rv.cnt, 0);` |
-| #2 | **餐廳詳情頁沒有 Google Maps 連結** — DB 內已有 `google_place_id`，但 [js/page-detail.jsx](js/page-detail.jsx) 沒做「在 Google Maps 開啟」按鈕 | 使用者無法直接從詳情頁跳到 Google Maps 看路線/評論/照片 | D（前端 + Maps） | 暫無；要做就加一顆連到 `https://www.google.com/maps/place/?q=place_id:<google_place_id>` 的按鈕 |
-| #3 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
-| #4 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
+| #2 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
+| #3 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
 
 ---
 
