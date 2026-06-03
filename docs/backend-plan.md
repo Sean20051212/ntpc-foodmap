@@ -7,6 +7,19 @@
 
 ---
 
+## ⚠️ 2026-06-02 待辦（推翻部分舊規格）
+
+對應 README「待辦事項清單」BE-1 ~ BE-4。下列項目尚未實作，與本檔既有章節衝突時以此區段為準。
+
+| # | 項目 | 影響章節 |
+|---|---|---|
+| BE-1 | 搜尋條件自動重置：每次重新輸入 keyword / 地址，或按下搜尋後，後端應回的篩選狀態（或前端送的參數）要視為「全清除」。需與前端協調 query 規約 | §4.2 list / count |
+| BE-2 | `/api/geo/locate` 改為以 `address` 字串比對 `districts` 表來判斷 `in_ntpc`，**不再用 15km 距離規則**（搭配 design-audit DB-3：districts 移除中心經緯度） | §4.3 geo/locate |
+| BE-3 | 預設位置改為前端傳入的 GPS（拿掉任何寫死板橋座標的 fallback） | §4.2 list 預設行為、§4.3 locate |
+| BE-4 | 距離搜尋優化：list 端點在算 Haversine 前，先用 `zipcode IN (該區 + 鄰接區)` 縮小候選集，再算距離排序 | §4.2 list |
+
+---
+
 ## 0. 開工順序
 
 1. 改 `sql/database.sql`（§1）

@@ -170,13 +170,52 @@ ntpc-foodmap/
 
 ---
 
-## ⚠️ 已知問題 / 待修
+## 📌 待辦事項清單（2026-06-02 更新）
 
-| 編號 | 問題 | 影響 | 應由誰修 | 短期 workaround |
-|---|---|---|---|---|
-| #1 | **CASCADE 刪除不觸發 trigger** — MySQL InnoDB 不會在 `ON DELETE CASCADE` 時跑 trigger，所以從 `users` 刪人 → `reviews` 連動刪 → 餐廳的 `rating_avg` / `rating_count` **不會被自動重算**，留著舊值 | 從 admin 刪用戶（或 SQL 直接 `DELETE FROM users`）後，被該用戶評過的餐廳評分變成舊資料。同理刪 `restaurants` 連動刪 `reviews` 時，rating 統計也對不上（但餐廳本身已被刪，影響較小） | C（後端使用者類） / A（DB） | 跑 SQL 重算所有餐廳評分： `UPDATE restaurants r LEFT JOIN (SELECT restaurant_id, AVG(rating) avg_rating, COUNT(*) cnt FROM reviews GROUP BY restaurant_id) rv ON rv.restaurant_id = r.restaurant_id SET r.rating_avg = COALESCE(rv.avg_rating, 0), r.rating_count = COALESCE(rv.cnt, 0);` |
-| #2 | **前端透過 CDN 載 React/Babel/Leaflet** — `index.html` 從 unpkg.com 抓 | 沒網路時前端整個跑不起來；正式 demo 前要考慮改本機檔案 | D / E | 短期沒網路改用 hotspot；正式 demo 前改自帶 |
-| #3 | **`/api/history/*` 後端做了但前端沒在用** — backend-plan §4 沒規格此區，後端組員自行加的 | 多了 3 支沒人打的端點 | C | 跟 C 確認是否要保留或刪掉 |
+### 資料庫（A）
+詳細規格變動見 [docs/design-audit.md](docs/design-audit.md)。
+
+| # | 項目 | 說明 |
+|---|---|---|
+| DB-1 | `date` 抽出獨立表 | 將餐廳的日期欄位獨立為資料表 |
+| DB-2 | `opentime` 跨日 | 考慮營業到凌晨的情境（例如 18:00–02:00），目前 `start_time < end_time` 假設會壞掉 |
+| DB-3 | `districts` 移除經緯度 | 移除 `center_latitude/center_longitude`；改由後端比對 `address` 是否存在於 `districts` 表來判斷是否位於新北市範圍內 |
+| DB-4 | `restaurant_photos` 移除排序欄位 | 拿掉 `sort_order`，避免新增 / 刪除照片時順序產生空缺 |
+| DB-5 | 主要標記改布林 | 移除 `main_marker` generated column 設計，將 `is_main` 改為 BOOLEAN 並加 DB 限制：每家餐廳只能一筆 `is_main = true` |
+| DB-6 | 圖片本機儲存 | 所有餐廳照片改存於本機伺服器（檔案系統），不再用外部 URL |
+| DB-7 | 標籤品質 | 用 AI 驗證每個 tag 都有對應餐廳；確認 tag 定義不過於細分 / 專一 |
+| DB-8 | ERD 正規化 | 用 AI 確認整體 ERD 符合正規化要求 |
+| DB-9 | Google Place ID 用途說明 | 在文件中完整說明 `google_place_id` 的用途與作用 |
+| DB-10 | `price_level` 抽出獨立表 | 消費級距改為獨立資料表 |
+
+### 後端（B、C）
+詳細規格變動見 [docs/backend-plan.md](docs/backend-plan.md)。
+
+| # | 項目 | 說明 |
+|---|---|---|
+| BE-1 | 搜尋條件自動重置 | 每次重新輸入 keyword / 地址，或按下搜尋後，自動清除先前的篩選條件（前後端協調） |
+| BE-2 | 新北市判斷邏輯改寫 | `/api/geo/locate` 從「距離 > 15km 視為非新北」改為依 `address` 比對 `districts` 表進行判斷（搭配 DB-3） |
+| BE-3 | 預設位置改 GPS | 拿掉寫死的板橋座標，改為自動取得使用者 GPS 位置 |
+| BE-4 | 距離搜尋優化 | 執行 Haversine 前，先以行政區（zipcode + 鄰接區）過濾候選餐廳，再算距離 |
+
+### 前端（D、E）
+詳細規格變動見 [docs/frontend-plan.md](docs/frontend-plan.md)。
+
+| # | 項目 | 說明 |
+|---|---|---|
+| FE-1 | 抽獎輪盤 | (1) 被抽中的餐廳若無圖片，顯示預設圖；(2) 輪盤上要顯示各候選餐廳的名稱 |
+| FE-2 | 登入頁清理 | 移除「測試帳號」與「管理員帳號」等說明文字 |
+| FE-3 | 移除技術性說明文字 | 各頁面刪除對一般使用者無意義的描述（例如「密碼以雜湊演算法加密」） |
+| FE-4 | 地圖頁桌面版排版 | 修正點擊「搜尋此區域」按鈕時頁面跑版的問題 |
+| FE-5 | 管理員操作確認 | 管理員執行刪除 / 修改前加入確認對話框，避免誤觸 |
+
+### 既存技術債（不在本輪 TODO，但仍需追蹤）
+
+| 編號 | 問題 | 短期 workaround |
+|---|---|---|
+| #1 | **CASCADE 刪除不觸發 trigger** — MySQL InnoDB 不會在 `ON DELETE CASCADE` 時跑 trigger，從 `users` 刪人 → `reviews` 連動刪 → 餐廳的 `rating_avg` / `rating_count` 不會被重算 | 跑 SQL 重算：`UPDATE restaurants r LEFT JOIN (SELECT restaurant_id, AVG(rating) avg_rating, COUNT(*) cnt FROM reviews GROUP BY restaurant_id) rv ON rv.restaurant_id = r.restaurant_id SET r.rating_avg = COALESCE(rv.avg_rating, 0), r.rating_count = COALESCE(rv.cnt, 0);` |
+| #2 | **前端 React/Babel/Leaflet 走 CDN** — 沒網路就跑不起來 | 正式 demo 前改自帶；短期用 hotspot |
+| #3 | **`/api/history/*` 後端做了但前端未用** | 跟 C 確認保留或刪除 |
 
 ---
 

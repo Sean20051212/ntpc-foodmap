@@ -5,6 +5,30 @@
 
 ---
 
+## ⚠️ 2026-06-02 待辦：Schema / 邏輯調整（推翻部分舊決策）
+
+下列項目尚未實作，會直接影響本檔後續章節的判定。若有衝突以本區段為準。對應 README「待辦事項清單」DB-1 ~ DB-10、BE-2。
+
+| # | 項目 | 影響到本檔章節 |
+|---|---|---|
+| DB-1 | `date` 欄位抽出為獨立資料表 | §7 共用資料字典 |
+| DB-2 | `opentime` 需支援跨日（營業到凌晨） | §3-E「是否營業中」、§7 opentime |
+| DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
+| DB-4 | `restaurant_photos` 移除 `sort_order` | §7 photos |
+| DB-5 | 拿掉 `main_marker` generated column，將 `is_main` 改為 BOOLEAN + DB 限制「每店至多一筆 true」 | §3-D / §7 photos |
+| DB-6 | 餐廳照片改存本機伺服器（不再用外部 URL） | §6 / §7 |
+| DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
+| DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
+| DB-9 | 在文件中完整說明 `google_place_id` 用途 | §7 |
+| DB-10 | `price_level` 抽出為獨立資料表 | §7 |
+| BE-2 | 「不在新北市」判定改為地址比對 `districts`（搭配 DB-3） | §3-B / §6 |
+
+下列既存決策因上述變動而**作廢或需重新評估**：
+- §3-B「不在新北市的處理」原本用「距離最近的 district 中心 > 15km」→ 改為地址比對。
+- §5「不做的 schema 變動」中「不新增獨立 date / price_level 表」的隱含假設失效（這兩項現在要做）。
+
+---
+
 ## 1. 設計初衷
 
 使用者重新設計整個網站使用者旅程；本次目的是在動工之前，把每項功能對照現有 [../sql/database.sql](../sql/database.sql) 的 11 張表 + 3 個觸發器，找出衝突點與不可行之處，並把所有「需要使用者決定」的問題鎖死，避免後端 / 前端兩個 agent 各自做出不一致的選擇。
