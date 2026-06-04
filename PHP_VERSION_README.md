@@ -1,50 +1,45 @@
-# pages/index.php 說明
+# pages/index.php 過渡狀態說明
 
-> 此頁是首頁，目前仍使用 **寫死的 8 筆 mock data**，尚未串接 `sql/seed.sql` 匯入的 693 筆真實餐廳。
+> ⚠️ 此檔記錄的是 **過渡期** 的 `pages/index.php`。最終實作以 [docs/frontend-plan.md](docs/frontend-plan.md) §3.3 為準，**此頁將被重寫**。
 
-## 目前實作
+## 目前實作狀態
 
-### 渲染
-- 伺服器端用 PHP 篩選 `$mockRestaurants` 陣列（`search` / `cuisine` / `distance`）後輸出列表
-- 同檔提供 AJAX 模式：`?ajax=1` 會回傳 JSON 而非 HTML
-- `window.restaurantsData` 與 `window.searchFilters` 由 PHP 注入給前端 JS
+`pages/index.php` 仍是 **寫死的 8 筆 mock data**，使用 PHP 在伺服器端做篩選並輸出 HTML，同時提供 `?ajax=1` 模式回 JSON。
 
-### 搜尋參數
+這份實作違反 [docs/frontend-plan.md §0 嚴禁清單](docs/frontend-plan.md) 的多項規則：
+- 寫死餐廳資料
+- 伺服器端 PHP 直接算 Haversine 距離
+- 沒有 API 層，前後端混在同一支 PHP 檔
+- 自訂的 8 個分類選項與 schema 的 14 個 tag 不一致
 
-| 參數 | 用途 |
-|---|---|
-| `search` | 關鍵字（比對 name / category，用 `mb_strpos` 支援中文） |
-| `cuisine` | 分類（固定 8 個選項，與 schema 的 14 個分類**不一致**，待改） |
-| `distance` | 距離上限（單位公尺，跟固定中心點 25.033964, 121.564468 算 Haversine） |
-| `ajax` | 設 1 時回傳 JSON |
+## 為何留著
 
-### 相依檔
-- `assets/css/styles.css`、`assets/css/home.css`
-- `assets/js/map.js`、`assets/js/home-php.js`
-- `.env` 的 `GOOGLE_MAPS_API_KEY` 會由 `pages/index.php` 注入 `window.GOOGLE_MAPS_API_KEY`
+純粹是「等後端 API 寫好之前的占位畫面」，方便組員看到 UI 長相。一旦 [docs/backend-plan.md §4.2](docs/backend-plan.md) 的 restaurants 端點實作完成，這個檔案會被全面改寫成符合 frontend-plan §3.3 的版本：
+- 開頁 `GET /api/auth/me` 確認登入
+- 跑馬燈 `GET /api/restaurants/carousel`
+- 推薦 `GET /api/restaurants/recommendations`
+- 所有渲染只 render API 回傳的 JSON
 
-## 待辦（讓這頁變成真實版）
+## 過渡期可用的 URL
 
-1. **接 DB**：開頭 `require __DIR__ . '/../config.php';` 與 `require __DIR__ . '/../lib/db.php';`，把 `$mockRestaurants` 換成 `SELECT * FROM restaurants JOIN ...`
-2. **分類選單對齊 schema**：目前 8 個寫死選項要換成 `SELECT id, name FROM tags`（14 個）
-3. **Google Maps key**：在 `.env` 填入 `GOOGLE_MAPS_API_KEY=你的前端 Maps JavaScript API key`
-4. **距離中心點**：目前固定板橋附近，應改為瀏覽器 geolocation 或讓使用者選區（用 `districts` 的中心經緯度）
-
-## AJAX 回傳格式
-
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 1, "name": "...", "category": "...", "rating": 4.5, "lat": 25.0, "lng": 121.5, "distanceMeters": 320 }
-  ],
-  "count": 1,
-  "filters": { "search": "...", "cuisine": "...", "distance": "..." }
-}
+```
+http://localhost/ntpc-foodmap/pages/index.php
+http://localhost/ntpc-foodmap/pages/index.php?search=日本料理
+http://localhost/ntpc-foodmap/pages/index.php?search=台菜&ajax=1
 ```
 
-## 故障排除
+## 已知問題（重寫時會一起修掉）
+
+- 分類選單寫死 8 個，與 schema 14 tag 不一致
+- 距離中心點固定在板橋附近，未用瀏覽器 geolocation 或使用者選區
+- Google Maps key 在 HTML 內為 `YOUR_FRONTEND_KEY_HERE` placeholder
+- 中文搜尋大小寫 / 全形空白未處理
+- 假登入 `pages/login.php`：任何非「wrong」的密碼都會通過
+
+這些不要在這個 mock 版本修補，**等後端 API 出來後直接照 frontend-plan 重寫**比較划算。
+
+## 故障排除（過渡期用）
 
 - **中文搜尋無結果**：確認 PHP 啟用 `mbstring` 擴展，且檔案編碼 UTF-8
-- **地圖標記不顯示**：先檢查 `.env` 是否有 `GOOGLE_MAPS_API_KEY`，以及瀏覽器 console 是否報 InvalidKey
-- **改了 PHP 沒效果**：若使用 XAMPP，記得專案是 Copy-Item 到 `htdocs/`，要重新複製 + Ctrl+F5
+- **地圖標記不顯示**：placeholder key 必定報 InvalidKey，這個版本本來就不會顯示地圖
+- **改了 PHP 沒效果**：XAMPP 部署是 Copy-Item 不是 symlink，要重新複製 + Ctrl+F5

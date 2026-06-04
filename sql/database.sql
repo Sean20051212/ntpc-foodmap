@@ -403,16 +403,18 @@ CREATE TABLE `users` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `uk_users_username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
+-- 預設僅一筆 superadmin：username=admin / password=admin123（bcrypt hash 為真實可登入版本）
+-- 新環境匯入後直接以 admin/admin123 登入；上線前請至少改密碼。
 --
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','$2y$10$abcdefghijklmnopqrstuv',1,'2026-05-01 10:00:00','2026-05-01 10:00:00'),(2,'foodie_mary','$2y$10$1234567890abcdefghijkl',0,'2026-05-02 14:30:00','2026-05-02 14:30:00'),(3,'tech_guru','$2y$10$zyxwvutsrqponmlkjihgfe',0,'2026-05-15 09:15:00','2026-05-15 09:15:00');
+INSERT INTO `users` VALUES (1,'admin','$2y$10$3iDcrJj7mfkfdTrbuF6SAe1AfQMMHwM7KPGrMMFI9EhCVL1ahxL7K',1,'2026-05-01 10:00:00','2026-05-01 10:00:00');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
