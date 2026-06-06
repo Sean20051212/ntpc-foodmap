@@ -224,6 +224,7 @@
 | `/api/geo/geocode` | POST | 公開（限流） | address |
 | `/api/dicts/districts` | GET | 公開 | 29 區 + 鄰接 |
 | `/api/dicts/tags` | GET | 公開 | 14 分類 |
+| `/api/dicts/days` | GET | 公開 | 7 筆星期（day_id / day_name_zh / day_name_en），詳情頁顯示營業時間用 |
 | `/api/favorites/toggle` | POST | 登入 | restaurant_id |
 | `/api/favorites/list` | GET | 登入 | — |
 | `/api/reviews/upsert` | POST | 登入 | restaurant_id, rating, comment |

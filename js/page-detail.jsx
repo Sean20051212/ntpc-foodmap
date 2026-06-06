@@ -1,5 +1,4 @@
 /* 詳情頁 — 全幅 hero gallery + 完整資訊 + 營業時間 + 評論(upsert) + 評論列表 */
-const DAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
 function Gallery({ photos }) {
   const [i, setI] = useState(0);
@@ -81,9 +80,11 @@ function PageDetail({ me }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState(null);
   const [reviews, setReviews] = useState(null);
+  const [daysDict, setDaysDict] = useState([]);
 
   const loadDetail = () => api("GET", "/api/restaurants/detail", { id }).then(r => setD(r.restaurant)).catch(e => setErr(e));
   const loadReviews = () => api("GET", "/api/reviews/by_restaurant", { restaurant_id: id, limit: 20, offset: 0 }).then(r => setReviews(r)).catch(() => setReviews({ total: 0, reviews: [] }));
+  useEffect(() => { api("GET", "/api/dicts/days").then(r => setDaysDict(r.days)).catch(() => setDaysDict([])); }, []);
   useEffect(() => { setD(null); setReviews(null); setErr(null); loadDetail(); loadReviews(); if (!route.anchor) window.scrollTo(0, 0); }, [id]);
   useEffect(() => {
     if (!reviews || !route.anchor) return;
@@ -132,8 +133,10 @@ function PageDetail({ me }) {
             {[1, 2, 3, 4, 5, 6, 0].map(day => {
               const rows = d.opentime_regular.filter(o => o.day === day);
               const today = new Date().getDay() === day;
+              const dictEntry = daysDict.find(x => x.day_id === day);
+              const dayLabel = dictEntry ? dictEntry.day_name_zh : (rows[0] && rows[0].day_name_zh) || "";
               return <div key={day} className={"hours-row" + (today ? " today" : "")}>
-                <span className="d">週{DAYS[day]}{today ? " · 今天" : ""}</span>
+                <span className="d">{dayLabel}{today ? " · 今天" : ""}</span>
                 <span className="ink2 tnum">{rows.length ? rows.map(r => r.start_time.slice(0, 5) + "–" + r.end_time.slice(0, 5)).join("、") : "公休"}</span>
               </div>;
             })}

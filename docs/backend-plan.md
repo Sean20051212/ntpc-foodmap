@@ -363,7 +363,7 @@ session_start();
         "is_open_now": true, "is_favorited": false, "user_review": null,
         "photos": [{"photo_id": 1, "url": "...", "is_main": 1, "sort_order": 0}],
         "phones": ["02-1234-5678"],
-        "opentime_regular": [{"day": 1, "start_time": "11:00:00", "end_time": "21:00:00"}],
+        "opentime_regular": [{"day": 1, "day_name_zh": "週一", "day_name_en": "Monday", "start_time": "11:00:00", "end_time": "21:00:00"}],
         "opentime_special": ["週五公休", "農曆春節休"],
         "tags": [{"tag_id": 1, "tag_name": "小吃／熱炒"}]
       }
@@ -435,7 +435,7 @@ session_start();
 
 ---
 
-### 4.4 Dicts 區（2 支）
+### 4.4 Dicts 區（3 支）
 
 #### GET `/api/dicts/districts`
 - 公開；回 29 個區 + 各區鄰接清單
@@ -449,6 +449,17 @@ session_start();
 
 #### GET `/api/dicts/tags`
 - 公開；回 14 個 tag
+
+#### GET `/api/dicts/days`
+- 公開；回 7 筆 `days_of_week`
+  ```json
+  { "ok": true, "data": { "days": [
+    {"day_id": 0, "day_name_zh": "週日", "day_name_en": "Sunday"},
+    {"day_id": 1, "day_name_zh": "週一", "day_name_en": "Monday"},
+    ...
+  ]}}
+  ```
+- 用途：前端顯示星期名稱（取代寫死的 `DAYS` 常數）；i18n 切換語言時只動此端點即可
 
 ---
 

@@ -16,6 +16,34 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `days_of_week`
+--
+-- 星期查找表（lookup table）：支援 i18n 名稱與未來元資料擴充
+--   day_id: 0=週日 .. 6=週六
+--
+
+DROP TABLE IF EXISTS `days_of_week`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `days_of_week` (
+  `day_id` tinyint(4) NOT NULL,
+  `day_name_zh` varchar(10) NOT NULL,
+  `day_name_en` varchar(10) NOT NULL,
+  PRIMARY KEY (`day_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `days_of_week`
+--
+
+LOCK TABLES `days_of_week` WRITE;
+/*!40000 ALTER TABLE `days_of_week` DISABLE KEYS */;
+INSERT INTO `days_of_week` VALUES (0,'週日','Sunday'),(1,'週一','Monday'),(2,'週二','Tuesday'),(3,'週三','Wednesday'),(4,'週四','Thursday'),(5,'週五','Friday'),(6,'週六','Saturday');
+/*!40000 ALTER TABLE `days_of_week` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `district_adjacency`
 --
 
@@ -113,8 +141,9 @@ CREATE TABLE `opentime` (
   `spec_rec` varchar(255) DEFAULT NULL COMMENT '顯示用文字（特殊備註）',
   PRIMARY KEY (`opentime_id`),
   KEY `idx_opentime_restaurant` (`restaurant_id`),
+  KEY `fk_opentime_day` (`day`),
   CONSTRAINT `fk_opentime_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `chk_opentime_day` CHECK (`day` between 0 and 6)
+  CONSTRAINT `fk_opentime_day` FOREIGN KEY (`day`) REFERENCES `days_of_week` (`day_id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5835 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

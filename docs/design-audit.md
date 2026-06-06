@@ -21,6 +21,7 @@
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
 | DB-9 | 在文件中完整說明 `google_place_id` 用途 | §7 |
 | DB-10 | `price_level` 抽出為獨立資料表 | §7 |
+| DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（已完成 2026-06-06） — 教授質疑 `day` 應獨立成表以支援 i18n / 元資料擴充。新表三欄：`day_id`, `day_name_zh`, `day_name_en`；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉 `DAYS` 常數 | §3-E、§7、backend §4.4 |
 | BE-2 | 「不在新北市」判定改為地址比對 `districts`（搭配 DB-3） | §3-B / §6 |
 
 下列既存決策因上述變動而**作廢或需重新評估**：
@@ -206,7 +207,8 @@
 - 分類：`tag_id` (int), `tag_name`
 - 照片：`photo_id`, `restaurant_id`, `url`, `is_main` (0/1), `sort_order`
 - 電話：`phone_id`, `restaurant_id`, `phone_number`
-- 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六), `start_time`, `end_time`, `spec_rec`
+- 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`
+- 星期查找表：`day_id` (0~6), `day_name_zh` (週日/週一/...), `day_name_en` (Sunday/Monday/...)
 - 評論：`user_id`, `restaurant_id`, `rating` (1-5), `comment`, `created_at`, `updated_at`
 - 收藏：`user_id`, `restaurant_id`, `created_at`
 - 使用者：`user_id`, `username`, `password_hash`, `is_admin` (0/1), `created_at`, `updated_at`

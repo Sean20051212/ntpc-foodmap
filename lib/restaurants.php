@@ -457,16 +457,20 @@ function restaurantFetchDetail(int $restaurantId): ?array
     $restaurant['phones'] = $phones->fetchAll(PDO::FETCH_COLUMN);
 
     $hours = db()->prepare(
-        'SELECT day, start_time, end_time, spec_rec
-         FROM opentime
-         WHERE restaurant_id = ?
-         ORDER BY day ASC, start_time ASC, end_time ASC, opentime_id ASC'
+        'SELECT ot.day, ot.start_time, ot.end_time, ot.spec_rec,
+                d.day_name_zh, d.day_name_en
+         FROM opentime ot
+         LEFT JOIN days_of_week d ON d.day_id = ot.day
+         WHERE ot.restaurant_id = ?
+         ORDER BY ot.day ASC, ot.start_time ASC, ot.end_time ASC, ot.opentime_id ASC'
     );
     $hours->execute([$restaurantId]);
     $special = [];
     foreach ($hours->fetchAll() as $hour) {
         $restaurant['opentime_regular'][] = [
             'day' => (int) $hour['day'],
+            'day_name_zh' => $hour['day_name_zh'],
+            'day_name_en' => $hour['day_name_en'],
             'start_time' => $hour['start_time'],
             'end_time' => $hour['end_time'],
         ];

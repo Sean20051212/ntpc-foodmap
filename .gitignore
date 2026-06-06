@@ -27,6 +27,7 @@ desktop.ini
 *.sql.bak
 *.dump
 /sql/*.dump
+/sql/snapshots/
 
 # 暫存
 *.tmp

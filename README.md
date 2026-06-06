@@ -187,6 +187,7 @@ ntpc-foodmap/
 | DB-8 | ERD 正規化 | 用 AI 確認整體 ERD 符合正規化要求 |
 | DB-9 | Google Place ID 用途說明 | 在文件中完整說明 `google_place_id` 的用途與作用 |
 | DB-10 | `price_level` 抽出獨立表 | 消費級距改為獨立資料表 |
+| DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（2026-06-06 完成）| 新表三欄 day_id / day_name_zh / day_name_en；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉寫死 `DAYS` 常數。回應教授對 opentime.day 正規化的質疑 |
 
 ### 後端（B、C）
 詳細規格變動見 [docs/backend-plan.md](docs/backend-plan.md)。
@@ -268,6 +269,56 @@ git branch -d feat/B-something
 2. 改 DB 密碼
 3. 通知所有人不要 pull 那個 commit
 4. 由負責人清 Git 歷史（`git filter-branch` 或 BFG）
+
+---
+
+## 🧨 DB 備份的編碼陷阱（重要 — 我們已踩過坑）
+
+備份 / 還原 MySQL 一律用 **UTF-8**，否則中文會永久損毀。
+
+### ❌ 錯誤示範（PowerShell `>` 重導向）
+
+```powershell
+& "C:\xampp\mysql\bin\mysqldump.exe" -u root ntpc_foodmap > out.sql
+```
+
+PowerShell 預設用 **UTF-16 LE** 寫檔，而 mysqldump 輸出 UTF-8。中間的字節再編碼會把所有中文字（評論內文、中文使用者名稱等）變成亂碼，**無法還原**。我們真的這樣搞壞過一份備份，9 則中文評論直接 GG。
+
+### ✅ 正確做法（任選一種）
+
+```powershell
+# 方法 1：cmd /c 包起來，由 cmd 處理 > 重導向，保留 UTF-8
+cmd /c "`"C:\xampp\mysql\bin\mysqldump.exe`" -u root --default-character-set=utf8mb4 --databases ntpc_foodmap > `"out.sql`""
+
+# 方法 2：用 mysqldump 自己的 --result-file（不經過 shell 重導向）
+& "C:\xampp\mysql\bin\mysqldump.exe" -u root --default-character-set=utf8mb4 --databases ntpc_foodmap --result-file="out.sql"
+```
+
+### 驗證備份檔編碼正確的方法
+
+```powershell
+# 應該能找到中文，找不到就代表編碼壞了
+Select-String -Path out.sql -Pattern "週日" -SimpleMatch | Select-Object -First 1
+```
+
+---
+
+## 💻 PowerShell vs CMD 指令語法差異（給 AI 助手 / 文件作者）
+
+本專案開發環境是 Windows，常在 PowerShell 與 CMD 切換。下指令時請**明確標示**使用哪個 shell，避免使用者要手動翻譯：
+
+| 用途 | PowerShell | CMD |
+|---|---|---|
+| 執行有空格 / 引號的 exe | `& "C:\path\to.exe" args` | `"C:\path\to.exe" args`（不需要 `&`） |
+| 輸入 / 輸出重導向 `<` `>` | **不可靠**（PowerShell 會改編碼），需 `cmd /c "..."` 包起來 | 原生支援 |
+| 變數 | `$var = "x"` | `set var=x` / `%var%` |
+| 命令鏈接 | `;` 或 `if ($?) { ... }` | `&&` |
+| 環境變數 | `$env:NAME` | `%NAME%` |
+
+**建議流程**：
+- 不涉及 `<` / `>` 重導向：用 PowerShell（變數系統較好）
+- 涉及 `<` / `>` 重導向載入 / 匯出 SQL：用 CMD，或在 PowerShell 內 `cmd /c "..."`
+- 給指令時**在 code block 前一行寫明 shell**，例如「以下在 CMD 執行」「以下在 PowerShell 執行」
 
 ---
 
