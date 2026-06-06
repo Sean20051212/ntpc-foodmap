@@ -18,6 +18,11 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const toggleTag = (id) => set("tags", form.tags.includes(id) ? form.tags.filter(x => x !== id) : [...form.tags, id]);
   const save = async () => {
     if (!form.restaurant_name.trim()) return toast("請輸入餐廳名稱", "err");
+    if (!(await confirmDialog({
+      title: editId ? "確定要修改餐廳資料？" : "確定要新增餐廳？",
+      body: editId ? `將儲存「${form.restaurant_name}」的最新內容。` : `將新增「${form.restaurant_name}」。`,
+      ok: editId ? "確認修改" : "確認新增"
+    }))) return;
     setBusy(true);
     try {
       await api("POST", "/api/admin/restaurant/upsert", { restaurant_id: editId, ...form, tags: form.tags, phones: form.phones.split(/[,，]/).map(s => s.trim()).filter(Boolean) });
@@ -27,11 +32,21 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const addPhoto = async () => {
     const url = prompt("輸入照片網址 URL");
     if (!url) return;
+    if (!(await confirmDialog({ title: "確定要新增照片？", body: "新增後會出現在這家餐廳的照片列表。", ok: "新增照片" }))) return;
     await api("POST", "/api/admin/photo/upsert", { restaurant_id: editId, url, is_main: photos.length === 0 ? 1 : 0 });
     const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
   };
-  const setMain = async (ph) => { await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: editId, url: ph.url, is_main: 1 }); const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos); };
-  const delPhoto = async (ph) => { await api("POST", "/api/admin/photo/delete", { photo_id: ph.photo_id }); const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos); };
+  const setMain = async (ph) => {
+    if (ph.is_main) return;
+    if (!(await confirmDialog({ title: "確定要修改主圖？", body: "這張照片會成為餐廳列表與詳情頁的主要圖片。", ok: "設為主圖" }))) return;
+    await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: editId, url: ph.url, is_main: 1 });
+    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+  };
+  const delPhoto = async (ph) => {
+    if (!(await confirmDialog({ title: "確定要刪除照片？", body: "刪除後不會影響餐廳資料，但照片會從列表移除。", ok: "刪除照片", danger: true }))) return;
+    await api("POST", "/api/admin/photo/delete", { photo_id: ph.photo_id });
+    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+  };
 
   return <Modal title={editId ? "編輯餐廳" : "新增餐廳"} onClose={onClose} width={620}>
     {loading ? <Loading /> : <div className="col gap16">

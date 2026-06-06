@@ -8,9 +8,17 @@ function Seg2({ options, value, onChange }) {
   return <div className="seg2">{options.map(o => <button key={o.v} className={value === o.v ? "on" : ""} onClick={() => onChange(o.v)}>{o.label}</button>)}</div>;
 }
 
-function FilterPanel({ dicts, f, set, count, onClear }) {
+function FilterPanel({ dicts, f, set, count, onClear, onDistrictPick }) {
   if (!dicts) return <Loading pad={20} />;
-  const toggle = (key, id) => { const cur = f[key]; set(key, cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]); };
+  const toggle = (key, id) => {
+    const cur = f[key];
+    const willSelect = !cur.includes(id);
+    set(key, willSelect ? [...cur, id] : cur.filter(x => x !== id));
+    if (key === "districts" && willSelect && onDistrictPick) {
+      const district = dicts.districts.find(d => d.zipcode === id);
+      if (district) onDistrictPick(district);
+    }
+  };
   return <div>
     <div className="filter-group">
       <h4>區域 {f.districts.length > 0 && <span className="v">已選 {f.districts.length}</span>}</h4>
@@ -34,6 +42,30 @@ function FilterPanel({ dicts, f, set, count, onClear }) {
     </div>
     <div className="count-pill">符合條件 <b>{count == null ? "…" : count}</b> 家</div>
     <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 10 }} onClick={onClear}>清除全部條件</button>
+  </div>;
+}
+
+function ActiveFilters({ dicts, f, appliedBbox, count, onRemove, onClear }) {
+  if (!dicts) return null;
+  const labels = [];
+  const districtMap = new Map(dicts.districts.map(d => [d.zipcode, d.district_name]));
+  const tagMap = new Map(dicts.tags.map(t => [t.tag_id, t.tag_name]));
+  if (f.keyword.trim()) labels.push({ key: "keyword", label: f.keyword.trim() });
+  f.districts.forEach(id => labels.push({ key: "district:" + id, label: districtMap.get(id) || id, onRemove: () => onRemove("district", id) }));
+  f.tags.forEach(id => labels.push({ key: "tag:" + id, label: tagMap.get(id) || id, onRemove: () => onRemove("tag", id) }));
+  if (f.minRating) labels.push({ key: "minRating", label: "評分 ≥ " + f.minRating + "★" });
+  if (f.maxDist) labels.push({ key: "maxDist", label: "距離 ≤ " + (f.maxDist >= 1000 ? "1km" : f.maxDist + "m") });
+  if (appliedBbox) labels.push({ key: "bbox", label: "目前地圖區域" });
+  if (!labels.length) return null;
+  return <div className="active-filters">
+    <div className="active-filter-row">
+      <span className="active-filter-title">目前篩選</span>
+      {labels.map(item => <button key={item.key} className="filter-token" onClick={item.onRemove || (() => onRemove(item.key))}>
+        <span>{item.label}</span><b>×</b>
+      </button>)}
+      <button className="btn btn-ghost btn-sm reset-filters" onClick={onClear}>重設篩選</button>
+    </div>
+    <div className="tiny muted">符合條件 {count == null ? "…" : count} 家，點擊條件可立即解除。</div>
   </div>;
 }
 
@@ -97,8 +129,21 @@ function buildPopup(r, onFav) {
 
 function WheelDock({ params, onClose }) {
   const SPIN_MS = 1250;
-  const [pool, setPool] = useState(null), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false), [spinId, setSpinId] = useState(0);
-  useEffect(() => { api("GET", "/api/restaurants/wheel_pool", params).then(d => setPool(d.restaurant_ids.length)).catch(() => setPool(0)); }, []);
+  const [pool, setPool] = useState(null), [candidates, setCandidates] = useState([]), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false), [spinId, setSpinId] = useState(0);
+  const loadPool = async () => {
+    const d = await api("GET", "/api/restaurants/wheel_pool", params);
+    setPool(d.restaurant_ids.length);
+    setCandidates((d.candidates || []).slice(0, 8));
+  };
+  useEffect(() => { loadPool().catch(() => { setPool(0); setCandidates([]); }); }, []);
+  const labelLines = (name) => {
+    const text = String(name || "候選餐廳").trim();
+    const short = text.length > 9 ? text.slice(0, 8) + "…" : text;
+    const size = short.length > 6 ? 3 : 4;
+    const lines = [];
+    for (let i = 0; i < short.length; i += size) lines.push(short.slice(i, i + size));
+    return lines.slice(0, 3);
+  };
   const draw = async () => {
     if (spinning || pool === 0) return;
     const startedAt = performance.now();
@@ -114,7 +159,7 @@ function WheelDock({ params, onClose }) {
       }, delay);
     } catch (e) { setSpinning(false); toast(e.message, "err"); }
   };
-  const reset = async () => { await api("POST", "/api/restaurants/wheel_reset", params); setExhausted(false); setResult(null); const d = await api("GET", "/api/restaurants/wheel_pool", params); setPool(d.restaurant_ids.length); toast("已重設輪盤"); };
+  const reset = async () => { await api("POST", "/api/restaurants/wheel_reset", params); setExhausted(false); setResult(null); await loadPool(); toast("已重設輪盤"); };
   return <div className="wheel-dock">
     <div className="row between center" style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
       <div className="h3">🎯 吃什麼輪盤</div><button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
@@ -122,11 +167,18 @@ function WheelDock({ params, onClose }) {
     <div style={{ padding: 18, overflow: "auto", flex: 1 }}>
       <div className="wheel-stage">
         <div className="wheel-ptr">▼</div>
-        <div key={spinId} className={"wheel-spin" + (spinning ? " spinning" : "")}><span>{spinning ? "" : "?"}</span></div>
+        <div key={spinId} className={"wheel-spin" + (spinning ? " spinning" : "")}>
+          {candidates.length > 0 ? candidates.map((r, i) => {
+            const deg = i * 45 + 22.5;
+            return <div className="wheel-label" style={{ transform: `rotate(${deg}deg)` }} key={r.restaurant_id || i}>
+              <span style={{ transform: `rotate(${-deg}deg)` }}>{labelLines(r.restaurant_name).map((line, k) => <b key={k}>{line}</b>)}</span>
+            </div>;
+          }) : <span>?</span>}
+        </div>
       </div>
       {exhausted ? <Empty icon="🪹" title="候選都抽完了！" sub="重設後可重新抽過" action={<button className="btn btn-primary" onClick={reset}>重設輪盤</button>} />
         : result ? <div className="card row" style={{ marginBottom: 14, cursor: "pointer" }} onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>
-          <Photo url={result.main_photo_url} style={{ flex: "0 0 84px", alignSelf: "stretch" }} />
+          <Photo url={result.photos?.[0]?.url} alt={result.restaurant_name} style={{ flex: "0 0 84px", alignSelf: "stretch" }} />
           <div style={{ padding: "10px 12px" }}><div className="h3">{result.restaurant_name}</div>
             <div className="row center gap6 small ink2"><span className="rating-num">{result.rating_avg.toFixed(1)}</span><Stars value={result.rating_avg} size={12} /><span>· {result.district_name}</span></div>
             {result.distance_m != null && <div className="tiny muted">約 {result.distance_m >= 1000 ? (result.distance_m / 1000).toFixed(1) + "km" : result.distance_m + "m"}</div>}</div>
@@ -135,7 +187,7 @@ function WheelDock({ params, onClose }) {
       {!exhausted && <div className="col gap8">
         <button className="btn btn-primary btn-lg btn-block" disabled={spinning || pool === 0} onClick={draw}>{spinning ? "抽選中…" : result ? "再抽一次" : "開始抽 🎲"}</button>
         {result && <button className="btn btn-outline btn-block" onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>看餐廳詳情</button>}
-        <div className="tiny muted" style={{ textAlign: "center", lineHeight: 1.6 }}>抽過的不會再抽到（後端 session 記錄）<br /><span onClick={reset} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 700 }}>重設輪盤</span></div>
+        <div className="tiny muted" style={{ textAlign: "center", lineHeight: 1.6 }}>抽過的不會再抽到<br /><span onClick={reset} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 700 }}>重設輪盤</span></div>
       </div>}
     </div>
   </div>;
@@ -209,20 +261,48 @@ function PageExplore({ me }) {
 
   const onFav = (r) => window.favToggle(r, setList);
   const onIdle = (bbox) => { setPendBbox(bbox); setShowResq(true); };
-  const reSearch = () => { setAppliedBbox(pendBbox); setShowResq(false); };
-  const clearAll = () => setF({ districts: [], tags: [], minRating: 0, maxDist: 0, sort: f.sort, keyword: "" });
-  const activeCount = f.districts.length + f.tags.length + (f.minRating ? 1 : 0) + (f.maxDist ? 1 : 0);
+  const reSearch = () => { setAppliedBbox(pendBbox); setShowResq(false); requestAnimationFrame(() => window.dispatchEvent(new Event("resize"))); };
+  const clearKeywordRoute = () => {
+    if (route.query.keyword != null) navigate("#/explore");
+  };
+  const clearAll = () => {
+    setF({ districts: [], tags: [], minRating: 0, maxDist: 0, sort: f.sort, keyword: "" });
+    setAppliedBbox(null);
+    setPendBbox(null);
+    setShowResq(false);
+    clearKeywordRoute();
+  };
+  const removeFilter = (key, value) => {
+    if (key === "district") set("districts", f.districts.filter(id => id !== value));
+    else if (key === "tag") set("tags", f.tags.filter(id => id !== value));
+    else if (key === "keyword") { set("keyword", ""); clearKeywordRoute(); }
+    else if (key === "minRating") set("minRating", 0);
+    else if (key === "maxDist") set("maxDist", 0);
+    else if (key === "bbox") { setAppliedBbox(null); setPendBbox(null); setShowResq(false); }
+  };
+  const focusDistrict = (district) => {
+    const lat = Number(district.center_latitude);
+    const lng = Number(district.center_longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setLoc({ lat, lng });
+    setAppliedBbox(null);
+    setPendBbox(null);
+    setShowResq(false);
+  };
+  const activeCount = f.districts.length + f.tags.length + (f.minRating ? 1 : 0) + (f.maxDist ? 1 : 0) + (f.keyword.trim() ? 1 : 0) + (appliedBbox ? 1 : 0);
 
   return <div className="explore-root">
     <div className="explore-toolbar">
       <button className="btn btn-ghost btn-sm hide-m" onClick={() => setCollapsed(c => !c)} title="收合篩選">{collapsed ? "☰ 篩選" : "« 收合"}</button>
-      <div className="grow" style={{ maxWidth: 460 }}><SearchBar initial={f.keyword} /></div>
+      <div className="grow" style={{ maxWidth: 460 }}><SearchBar initial={f.keyword} onKeywordClear={() => removeFilter("keyword")} /></div>
       <select className="select" style={{ width: "auto", padding: "8px 12px" }} value={f.sort} onChange={e => set("sort", e.target.value)}>
         {SORTS.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
       <button className={"btn btn-sm wheel-toggle " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => setWheel(w => !w)}>🎯 輪盤</button>
       <button className="btn btn-outline btn-sm show-m" onClick={() => setMFilter(true)}>⚙ 篩選{activeCount ? " (" + activeCount + ")" : ""}</button>
     </div>
+
+    <ActiveFilters dicts={dicts} f={f} appliedBbox={appliedBbox} count={count} onRemove={removeFilter} onClear={clearAll} />
 
     {/* mobile list/map toggle */}
     <div className="exp-mtoggle">
@@ -233,7 +313,7 @@ function PageExplore({ me }) {
     </div>
 
     <div className={"explore-body mtab-" + mtab}>
-      <div className={"exp-filter" + (collapsed ? " collapsed" : "")}><FilterPanel dicts={dicts} f={f} set={set} count={count} onClear={clearAll} /></div>
+      <div className={"exp-filter" + (collapsed ? " collapsed" : "")}><FilterPanel dicts={dicts} f={f} set={set} count={count} onClear={clearAll} onDistrictPick={focusDistrict} /></div>
 
       <div className="exp-list">
         {locInfo && !locInfo.in_ntpc && <div style={{ margin: 14, padding: "10px 12px", background: "var(--brand-tint)", borderRadius: 12, fontSize: 13, color: "var(--brand-deep)" }}>你目前不在新北市，以下顯示最近的 20 家新北餐廳。</div>}
@@ -255,7 +335,7 @@ function PageExplore({ me }) {
     </div>
 
     {mFilter && <Modal title="篩選" onClose={() => setMFilter(false)}>
-      <FilterPanel dicts={dicts} f={f} set={set} count={count} onClear={clearAll} />
+      <FilterPanel dicts={dicts} f={f} set={set} count={count} onClear={clearAll} onDistrictPick={focusDistrict} />
       <button className="btn btn-primary btn-block" style={{ marginTop: 8 }} onClick={() => setMFilter(false)}>查看 {count} 家結果</button>
     </Modal>}
   </div>;
