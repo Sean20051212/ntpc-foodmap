@@ -125,11 +125,18 @@ function restaurantOpenNowSql(): string
         SELECT 1
         FROM opentime ot
         WHERE ot.restaurant_id = r.restaurant_id
-          AND ot.day = DAYOFWEEK(NOW()) - 1
           AND (
-              (ot.start_time <= ot.end_time AND CURTIME() BETWEEN ot.start_time AND ot.end_time)
+              (ot.day = DAYOFWEEK(NOW()) - 1
+                AND ot.start_time <= ot.end_time
+                AND CURTIME() BETWEEN ot.start_time AND ot.end_time)
               OR
-              (ot.start_time > ot.end_time AND (CURTIME() >= ot.start_time OR CURTIME() <= ot.end_time))
+              (ot.day = DAYOFWEEK(NOW()) - 1
+                AND ot.start_time > ot.end_time
+                AND CURTIME() >= ot.start_time)
+              OR
+              (ot.day = MOD(DAYOFWEEK(NOW()) - 1 + 6, 7)
+                AND ot.start_time > ot.end_time
+                AND CURTIME() <= ot.end_time)
           )
     )";
 }
