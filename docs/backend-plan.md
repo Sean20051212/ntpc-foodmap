@@ -366,7 +366,7 @@ session_start();
         "rating_avg": 4.2, "rating_count": 15, "price_level": 2,
         "google_place_id": "ChIJ...",
         "is_open_now": true, "is_favorited": false, "user_review": null,
-        "photos": [{"photo_id": 1, "url": "...", "is_main": 1, "sort_order": 0}],
+        "photos": [{"photo_id": 1, "url": "...", "is_main": 1}],
         "phones": ["02-1234-5678"],
         "opentime_regular": [{"day": 1, "day_name_zh": "週一", "day_name_en": "Monday", "start_time": "11:00:00", "end_time": "21:00:00"}],
         "opentime_special": ["週五公休", "農曆春節休"],
@@ -539,7 +539,7 @@ session_start();
 - 輸入：`restaurant_id`；DELETE，FK CASCADE 自動清
 
 #### POST `/api/admin/photo/upsert`
-- 輸入：`photo_id` 可選、`restaurant_id`、`url`、`is_main`、`sort_order`
+- 輸入：`photo_id` 可選、`restaurant_id`、`url`、`is_main`
 - 注意：`is_main=1` 時若已存在另一筆 main，要先把舊的設 0（觸發 UNIQUE）
 
 #### POST `/api/admin/photo/delete`

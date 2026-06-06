@@ -289,7 +289,7 @@ window.MockBackend = (function () {
       if (!r) return err("not_found", "餐廳不存在");
       if (+p.is_main) r.photos.forEach(ph => ph.is_main = 0);
       if (p.photo_id) { const ph = r.photos.find(x => x.photo_id === +p.photo_id); if (ph) { ph.url = p.url; ph.is_main = +p.is_main ? 1 : 0; } }
-      else r.photos.push({ photo_id: Date.now(), restaurant_id: r.restaurant_id, url: p.url, is_main: +p.is_main ? 1 : 0, sort_order: r.photos.length });
+      else r.photos.push({ photo_id: Date.now(), restaurant_id: r.restaurant_id, url: p.url, is_main: +p.is_main ? 1 : 0 });
       if (!r.photos.some(ph => ph.is_main) && r.photos.length) r.photos[0].is_main = 1;
       save(); return ok(null);
     }),

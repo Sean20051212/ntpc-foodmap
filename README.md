@@ -177,10 +177,10 @@ ntpc-foodmap/
 
 | # | 項目 | 說明 |
 |---|---|---|
-| DB-1 | `date` 抽出獨立表 | 將餐廳的日期欄位獨立為資料表 |
+| DB-1 ✅ | `day` 抽出獨立表（2026-06-06 完成，同 DB-11）| 即 opentime.day 抽出 `days_of_week`，詳見 DB-11 |
 | DB-2 ✅ | `opentime` 跨日（2026-06-06 完成）| `lib/restaurants.php` `restaurantOpenNowSql()` 加上第三分支：當「昨天」那列 `start>end` 且 `CURTIME<=end` 時也算營業中，解決週一存 22:00-02:00、週二凌晨查詢被誤判打烊 |
 | DB-3 | `districts` 移除經緯度 | 移除 `center_latitude/center_longitude`；改由後端比對 `address` 是否存在於 `districts` 表來判斷是否位於新北市範圍內 |
-| DB-4 | `restaurant_photos` 移除排序欄位 | 拿掉 `sort_order`，避免新增 / 刪除照片時順序產生空缺 |
+| DB-4 ✅ | `restaurant_photos` 移除排序欄位（2026-06-06 完成）| 拿掉 `sort_order` 欄；照片排序改用 `ORDER BY is_main DESC, photo_id ASC`（主圖優先、其餘依新增順序），不再需要維護序列號避免空缺 |
 | DB-5 ✅ | 主要標記改布林（2026-06-06 完成）| 移除 `main_marker` generated column 與其上的 UNIQUE；`is_main` 改為 `BOOLEAN`（MariaDB 為 TINYINT(1) 同義）並加 `CHECK (is_main IN (0,1))`；「每店至多一張主圖」改由 `trg_photos_one_main_ins` / `trg_photos_one_main_upd` 兩個 BEFORE trigger 強制 |
 | DB-6 | 圖片本機儲存 | 所有餐廳照片改存於本機伺服器（檔案系統），不再用外部 URL |
 | DB-7 | 標籤品質 | 用 AI 驗證每個 tag 都有對應餐廳；確認 tag 定義不過於細分 / 專一 |

@@ -78,7 +78,7 @@ window.SEED = (function () {
     const [name, desc, address, zip, lat, lng, price, tagIds, phones, nPhotos, opentime, _z, special] = r;
     const photos = [];
     const kw = TAG_KW[tagIds[0]] || "food,restaurant";
-    for (let p = 0; p < nPhotos; p++) photos.push({ photo_id: rid * 10 + p, restaurant_id: rid, url: photo(rid, p, kw), is_main: p === 0 ? 1 : 0, sort_order: p });
+    for (let p = 0; p < nPhotos; p++) photos.push({ photo_id: rid * 10 + p, restaurant_id: rid, url: photo(rid, p, kw), is_main: p === 0 ? 1 : 0 });
     const ot = opentime.map((o, k) => ({ opentime_id: rid * 100 + k, restaurant_id: rid, ...o }));
     if (special === "24h") { /* already a single all-day row */ }
     // 特殊營業字串（day=0 sentinel）

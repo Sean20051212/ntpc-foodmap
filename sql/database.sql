@@ -197,7 +197,6 @@ CREATE TABLE `restaurant_photos` (
   `restaurant_id` int(11) NOT NULL,
   `url` varchar(500) NOT NULL COMMENT '絕對網址',
   `is_main` tinyint(1) NOT NULL DEFAULT 0,
-  `sort_order` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`photo_id`),
   KEY `idx_photos_restaurant` (`restaurant_id`),
   CONSTRAINT `fk_photos_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE,

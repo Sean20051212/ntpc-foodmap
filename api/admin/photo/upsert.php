@@ -11,7 +11,6 @@ $photoId = optionalInt($input, 'photo_id', null, 1);
 $restaurantId = requireInt($input, 'restaurant_id', 1);
 $url = requireString($input, 'url', 500);
 $isMain = adminBool($input, 'is_main');
-$sortOrder = optionalInt($input, 'sort_order', 0, 0, null) ?? 0;
 
 adminEnsureRestaurantExists($restaurantId);
 
@@ -40,18 +39,18 @@ try {
 
     if ($photoId === null) {
         $stmt = $pdo->prepare(
-            'INSERT INTO restaurant_photos (restaurant_id, url, is_main, sort_order)
-             VALUES (?, ?, ?, ?)'
+            'INSERT INTO restaurant_photos (restaurant_id, url, is_main)
+             VALUES (?, ?, ?)'
         );
-        $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0, $sortOrder]);
+        $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0]);
         $photoId = (int) $pdo->lastInsertId();
     } else {
         $stmt = $pdo->prepare(
             'UPDATE restaurant_photos
-             SET restaurant_id = ?, url = ?, is_main = ?, sort_order = ?
+             SET restaurant_id = ?, url = ?, is_main = ?
              WHERE photo_id = ?'
         );
-        $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0, $sortOrder, $photoId]);
+        $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0, $photoId]);
     }
 
     $pdo->commit();
@@ -63,7 +62,7 @@ try {
 }
 
 $photo = db()->prepare(
-    'SELECT photo_id, restaurant_id, url, is_main, sort_order
+    'SELECT photo_id, restaurant_id, url, is_main
      FROM restaurant_photos
      WHERE photo_id = ?'
 );
@@ -76,6 +75,5 @@ jsonOk([
         'restaurant_id' => (int) $row['restaurant_id'],
         'url' => $row['url'],
         'is_main' => (int) $row['is_main'],
-        'sort_order' => (int) $row['sort_order'],
     ],
 ]);

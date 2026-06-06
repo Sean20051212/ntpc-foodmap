@@ -14,7 +14,7 @@
 | DB-1 | `date` 欄位抽出為獨立資料表 | §7 共用資料字典 |
 | DB-2 ✅ | **`opentime` 跨日判斷**（已完成 2026-06-06） — `lib/restaurants.php` `restaurantOpenNowSql()` 補上「昨天列、`start>end`、`CURTIME<=end`」第三分支，解決週一存 22:00-02:00、週二凌晨查詢誤判打烊的 bug | §3-E「是否營業中」 |
 | DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
-| DB-4 | `restaurant_photos` 移除 `sort_order` | §7 photos |
+| DB-4 ✅ | **`restaurant_photos` 移除 `sort_order`**（2026-06-06 完成）| §7 photos |
 | DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
 | DB-6 | 餐廳照片改存本機伺服器（不再用外部 URL） | §6 / §7 |
 | DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
@@ -205,7 +205,7 @@
 - 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`
 - 區：`zipcode` (3 chars), `district_name`, `center_latitude`, `center_longitude`
 - 分類：`tag_id` (int), `tag_name`
-- 照片：`photo_id`, `restaurant_id`, `url`, `is_main` (0/1), `sort_order`
+- 照片：`photo_id`, `restaurant_id`, `url`, `is_main` (0/1)
 - 電話：`phone_id`, `restaurant_id`, `phone_number`
 - 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`；UNIQUE `(restaurant_id, day, start_time, end_time, spec_rec)` 擋完全重複列；時段重疊由後端 `adminAssertHoursNoOverlap` 在寫入時檢查
 - 星期查找表：`day_id` (0~6), `day_name_zh` (週日/週一/...), `day_name_en` (Sunday/Monday/...)

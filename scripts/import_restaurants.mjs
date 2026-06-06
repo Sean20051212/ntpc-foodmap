@@ -312,7 +312,7 @@ for (let i = 1; i < rows.length; i++) {
 
   // main photo
   if (travelImg) {
-    photoRows.push(`(${restaurantId}, ${sql(travelImg)}, 1, 0)`);
+    photoRows.push(`(${restaurantId}, ${sql(travelImg)}, 1)`);
     stats.photos++;
   }
 
@@ -349,7 +349,7 @@ lines.push('');
 
 lines.push('-- 4. 主圖（来自 newtaipei.travel）');
 if (photoRows.length) {
-  lines.push('INSERT INTO `restaurant_photos` (`restaurant_id`, `url`, `is_main`, `sort_order`) VALUES');
+  lines.push('INSERT INTO `restaurant_photos` (`restaurant_id`, `url`, `is_main`) VALUES');
   lines.push(photoRows.join(',\n') + ';');
 }
 lines.push('');

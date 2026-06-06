@@ -439,10 +439,10 @@ function restaurantFetchDetail(int $restaurantId): ?array
     ];
 
     $photos = db()->prepare(
-        'SELECT photo_id, url, is_main, sort_order
+        'SELECT photo_id, url, is_main
          FROM restaurant_photos
          WHERE restaurant_id = ?
-         ORDER BY is_main DESC, sort_order ASC, photo_id ASC'
+         ORDER BY is_main DESC, photo_id ASC'
     );
     $photos->execute([$restaurantId]);
     $restaurant['photos'] = array_map(static function (array $photo): array {
@@ -450,7 +450,6 @@ function restaurantFetchDetail(int $restaurantId): ?array
             'photo_id' => (int) $photo['photo_id'],
             'url' => $photo['url'],
             'is_main' => (int) $photo['is_main'],
-            'sort_order' => (int) $photo['sort_order'],
         ];
     }, $photos->fetchAll());
 

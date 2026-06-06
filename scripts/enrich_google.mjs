@@ -182,14 +182,6 @@ async function hasMainPhoto(conn, restaurantId) {
   return rows.length > 0;
 }
 
-async function countPhotos(conn, restaurantId) {
-  const [rows] = await conn.execute(
-    'SELECT COUNT(*) AS n FROM restaurant_photos WHERE restaurant_id = ?',
-    [restaurantId]
-  );
-  return rows[0].n;
-}
-
 // ---------- 主流程 ----------
 async function processOne(conn, r, stats) {
   const id = r.restaurant_id;
@@ -266,18 +258,16 @@ async function processOne(conn, r, stats) {
   const photos = (place.photos || []).slice(0, PHOTOS_PER_RESTAURANT);
   if (photos.length > 0) {
     const existingMain = await hasMainPhoto(conn, id);
-    const existingCount = await countPhotos(conn, id);
     let inserted = 0;
     for (let i = 0; i < photos.length; i++) {
       try {
         const uri = await resolvePhotoUri(photos[i].name);
         if (!uri) continue;
         const isMain = !existingMain && i === 0 ? 1 : 0;
-        const sortOrder = existingCount + i;
         if (!DRY) {
           await conn.execute(
-            'INSERT INTO restaurant_photos (restaurant_id, url, is_main, sort_order) VALUES (?, ?, ?, ?)',
-            [id, uri, isMain, sortOrder]
+            'INSERT INTO restaurant_photos (restaurant_id, url, is_main) VALUES (?, ?, ?)',
+            [id, uri, isMain]
           );
         }
         inserted++;

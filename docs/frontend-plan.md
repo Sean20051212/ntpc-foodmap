@@ -234,7 +234,7 @@
 | `/api/users/profile` | GET | 公開 | user_id |
 | `/api/admin/restaurant/upsert` | POST | admin | 完整 restaurant 欄位 |
 | `/api/admin/restaurant/delete` | POST | admin | restaurant_id |
-| `/api/admin/photo/upsert` | POST | admin | photo_id?, restaurant_id, url, is_main, sort_order |
+| `/api/admin/photo/upsert` | POST | admin | photo_id?, restaurant_id, url, is_main |
 | `/api/admin/photo/delete` | POST | admin | photo_id |
 | `/api/admin/users/list` | GET | admin | limit, offset, keyword |
 | `/api/admin/users/promote` | POST | admin | user_id |
