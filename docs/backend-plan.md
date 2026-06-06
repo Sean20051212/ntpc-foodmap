@@ -340,6 +340,7 @@ session_start();
 - 邏輯：
   - 動態組 WHERE：district / tag / rating / bbox / keyword
   - 距離過濾用 SQL Haversine `6371000 * 2 * ASIN(SQRT(POW(SIN(RADIANS(? - latitude)/2),2) + COS(RADIANS(?)) * COS(RADIANS(latitude)) * POW(SIN(RADIANS(? - longitude)/2),2)))` AS `distance_m`
+  - 寫入 opentime（透過 `/api/admin/restaurant/upsert`）會經 `adminAssertHoursNoOverlap`：把每段攤平到週分鐘軸（跨午夜拆兩半），兩兩比對任一對重疊就回 `opentime_overlap` 錯誤。`spec_rec IS NOT NULL` 列視為特殊備註不參與檢查。DB 層另加 `UNIQUE (restaurant_id, day, start_time, end_time, spec_rec)` 擋完全重複列。
   - `is_open_now`：用 `EXISTS (SELECT 1 FROM opentime ...)` 子查詢，含三個 OR 分支處理跨午夜情境：
     - A. 今天的列、`start<=end`、`CURTIME() BETWEEN start AND end`（正常時段）
     - B. 今天的列、`start>end`、`CURTIME() >= start`（跨午夜前半，例：週一 22:00-02:00 的週一晚上）

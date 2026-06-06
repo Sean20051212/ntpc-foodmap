@@ -480,6 +480,7 @@ function restaurantFetchDetail(int $restaurantId): ?array
             'day_name_en' => $hour['day_name_en'],
             'start_time' => $hour['start_time'],
             'end_time' => $hour['end_time'],
+            'spec_rec' => $hour['spec_rec'],
         ];
         if ($hour['spec_rec'] !== null && trim((string) $hour['spec_rec']) !== '') {
             $special[(string) $hour['spec_rec']] = true;

@@ -188,6 +188,7 @@ ntpc-foodmap/
 | DB-9 | Google Place ID 用途說明 | 在文件中完整說明 `google_place_id` 的用途與作用 |
 | DB-10 | `price_level` 抽出獨立表 | 消費級距改為獨立資料表 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（2026-06-06 完成）| 新表三欄 day_id / day_name_zh / day_name_en；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉寫死 `DAYS` 常數。回應教授對 opentime.day 正規化的質疑 |
+| DB-12 ✅ | **opentime 時段衝突清理 + 寫入防呆**（2026-06-06 完成）| (a) `lib/admin.php` `adminAssertHoursNoOverlap` 後端寫入時阻擋重疊段；(b) `opentime` 加 `UNIQUE (restaurant_id, day, start_time, end_time, spec_rec)`；(c) `scripts/check_opentime_conflicts.php` 離線檢測；(d) `scripts/fix_opentime_conflicts.php` 三步驟自動清理（catchall 偵測 / 包含 reduction / partial overlap union），對 live DB 套用後 56 家清乾淨，0 衝突 |
 
 ### 後端（B、C）
 詳細規格變動見 [docs/backend-plan.md](docs/backend-plan.md)。
@@ -209,6 +210,7 @@ ntpc-foodmap/
 | FE-3 | 移除技術性說明文字 | 各頁面刪除對一般使用者無意義的描述（例如「密碼以雜湊演算法加密」） |
 | FE-4 | 地圖頁桌面版排版 | 修正點擊「搜尋此區域」按鈕時頁面跑版的問題 |
 | FE-5 | 管理員操作確認 | 管理員執行刪除 / 修改前加入確認對話框，避免誤觸 |
+| FE-6 ✅ | **後台編輯營業時間 UI**（2026-06-06 完成）| `OpenTimeEditor` 元件：七天分區、每天可加多段、即時 client-side overlap 檢查並標紅、跨日提示「⚠ 跨至隔日」；後端錯誤碼 `opentime_overlap` 對應顯示 |
 
 ### 既存技術債（不在本輪 TODO，但仍需追蹤）
 

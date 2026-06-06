@@ -1,6 +1,88 @@
-/* Admin 後台 — 餐廳管理(CRUD+照片) + 使用者管理(promote/demote/delete, 保護 user_id=1) */
+/* Admin 後台 — 餐廳管理(CRUD+照片+營業時間) + 使用者管理(promote/demote/delete, 保護 user_id=1) */
+
+// 把 HH:MM:SS 截成 HH:MM 餵給 <input type="time">
+const trimTime = (t) => (t || "").slice(0, 5);
+// 24:00:00 是合法 TIME 值表示「當日午夜」，<input type="time"> 不接受 → 顯示成 00:00 + 跨日 flag 提示
+const normalizeForInput = (t) => {
+  if (!t) return "";
+  if (t === "24:00:00" || t === "24:00") return "00:00";
+  return trimTime(t);
+};
+// 寫回時轉成 HH:MM:SS
+const toFullTime = (hhmm) => /^\d{2}:\d{2}$/.test(hhmm) ? hhmm + ":00" : hhmm;
+
+// 攤平到分鐘軸做 client overlap check（複刻後端 adminAssertHoursNoOverlap 邏輯）
+function detectHourConflicts(hours) {
+  const segs = [];
+  hours.forEach((h, idx) => {
+    if (h.spec_rec) return;
+    if (!h.start_time || !h.end_time) return;
+    const [sh, sm] = h.start_time.split(":").map(Number);
+    const [eh, em] = h.end_time.split(":").map(Number);
+    const sMin = h.day * 1440 + sh * 60 + sm;
+    const eMin = h.day * 1440 + eh * 60 + em;
+    if (sMin === eMin) return;
+    if (eMin > sMin) {
+      segs.push({ idx, s: sMin, e: eMin });
+    } else {
+      segs.push({ idx, s: sMin, e: (h.day + 1) * 1440 });
+      const tailStart = ((h.day + 1) * 1440) % 10080;
+      segs.push({ idx, s: tailStart, e: tailStart + eh * 60 + em });
+    }
+  });
+  const conflicts = new Set();
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      if (segs[i].idx === segs[j].idx) continue;
+      if (Math.max(segs[i].s, segs[j].s) < Math.min(segs[i].e, segs[j].e)) {
+        conflicts.add(segs[i].idx);
+        conflicts.add(segs[j].idx);
+      }
+    }
+  }
+  return conflicts;
+}
+
+function OpenTimeEditor({ hours, onChange }) {
+  const DAY_NAMES = ["日", "一", "二", "三", "四", "五", "六"];
+  const conflicts = detectHourConflicts(hours);
+
+  const addRow = (day) => onChange([...hours, { day, start_time: "11:00", end_time: "14:00", spec_rec: null }]);
+  const updateRow = (idx, patch) => onChange(hours.map((h, i) => i === idx ? { ...h, ...patch } : h));
+  const removeRow = (idx) => onChange(hours.filter((_, i) => i !== idx));
+
+  const isCrossDay = (h) => {
+    if (!h.start_time || !h.end_time) return false;
+    return h.end_time <= h.start_time && h.end_time !== "00:00";
+  };
+
+  return <div className="col gap8">
+    {DAY_NAMES.map((name, day) => {
+      const dayRows = hours.map((h, idx) => ({ h, idx })).filter(({ h }) => h.day === day);
+      return <div key={day} className="card" style={{ padding: 10 }}>
+        <div className="row between center" style={{ marginBottom: dayRows.length ? 6 : 0 }}>
+          <b>週{name}</b>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => addRow(day)}>＋ 加時段</button>
+        </div>
+        {dayRows.length === 0 ? <div className="tiny muted">公休</div> : dayRows.map(({ h, idx }) => {
+          const bad = conflicts.has(idx);
+          return <div key={idx} className="row gap6 center wrap" style={{ marginTop: 4, padding: 6, background: bad ? "#fff0ee" : "transparent", border: bad ? "1px solid #c83b30" : "1px solid transparent", borderRadius: 6 }}>
+            <input type="time" className="input" style={{ width: 110 }} value={normalizeForInput(h.start_time)} onChange={e => updateRow(idx, { start_time: e.target.value })} />
+            <span>–</span>
+            <input type="time" className="input" style={{ width: 110 }} value={normalizeForInput(h.end_time)} onChange={e => updateRow(idx, { end_time: e.target.value })} />
+            <input className="input grow" style={{ minWidth: 120 }} placeholder="備註（spec_rec，可空）" value={h.spec_rec || ""} onChange={e => updateRow(idx, { spec_rec: e.target.value || null })} />
+            <button type="button" className="btn btn-ghost btn-sm" style={{ color: "#c83b30" }} onClick={() => removeRow(idx)}>✕</button>
+            {isCrossDay(h) && <span className="tiny" style={{ color: "var(--brand-deep)" }}>⚠ 跨至隔日 {h.end_time}</span>}
+          </div>;
+        })}
+      </div>;
+    })}
+    {conflicts.size > 0 && <div className="small" style={{ color: "#c83b30" }}>⚠ 有時段重疊（已標紅），需修正才能儲存</div>}
+  </div>;
+}
+
 function RestaurantForm({ dicts, editId, onClose, onSaved }) {
-  const [form, setForm] = useState({ restaurant_name: "", description: "", address: "", zipcode: dicts.districts[0].zipcode, price_level: 2, latitude: 25.0095, longitude: 121.4626, tags: [], phones: "" });
+  const [form, setForm] = useState({ restaurant_name: "", description: "", address: "", zipcode: dicts.districts[0].zipcode, price_level: 2, latitude: 25.0095, longitude: 121.4626, tags: [], phones: "", opentime: [] });
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(!!editId);
   const [busy, setBusy] = useState(false);
@@ -10,7 +92,17 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
     if (!editId) return;
     api("GET", "/api/restaurants/detail", { id: editId }).then(r => {
       const d = r.restaurant;
-      setForm({ restaurant_name: d.restaurant_name, description: d.description, address: d.address, zipcode: d.zipcode, price_level: d.price_level, latitude: d.latitude, longitude: d.longitude, tags: d.tags.map(t => t.tag_id), phones: d.phones.join(", ") });
+      setForm({
+        restaurant_name: d.restaurant_name, description: d.description, address: d.address,
+        zipcode: d.zipcode, price_level: d.price_level, latitude: d.latitude, longitude: d.longitude,
+        tags: d.tags.map(t => t.tag_id), phones: d.phones.join(", "),
+        opentime: (d.opentime_regular || []).map(o => ({
+          day: o.day,
+          start_time: trimTime(o.start_time),
+          end_time: trimTime(o.end_time),
+          spec_rec: o.spec_rec,
+        })),
+      });
       setPhotos(d.photos); setLoading(false);
     });
   }, [editId]);
@@ -18,11 +110,23 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const toggleTag = (id) => set("tags", form.tags.includes(id) ? form.tags.filter(x => x !== id) : [...form.tags, id]);
   const save = async () => {
     if (!form.restaurant_name.trim()) return toast("請輸入餐廳名稱", "err");
+    const conflicts = detectHourConflicts(form.opentime);
+    if (conflicts.size > 0) return toast("營業時間有重疊，請修正", "err");
     setBusy(true);
     try {
-      await api("POST", "/api/admin/restaurant/upsert", { restaurant_id: editId, ...form, tags: form.tags, phones: form.phones.split(/[,，]/).map(s => s.trim()).filter(Boolean) });
+      const payload = {
+        restaurant_id: editId, ...form,
+        tags: form.tags,
+        phones: form.phones.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        opentime: form.opentime
+          .filter(h => h.start_time && h.end_time)
+          .map(h => ({ day: h.day, start_time: toFullTime(h.start_time), end_time: toFullTime(h.end_time), spec_rec: h.spec_rec || null })),
+      };
+      await api("POST", "/api/admin/restaurant/upsert", payload);
       toast(editId ? "已更新餐廳" : "已新增餐廳", "ok"); onSaved();
-    } catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
+    } catch (e) {
+      toast(e.code === "opentime_overlap" ? "營業時間有重疊：" + e.message : e.message, "err");
+    } finally { setBusy(false); }
   };
   const addPhoto = async () => {
     const url = prompt("輸入照片網址 URL");
@@ -51,6 +155,10 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
       <div className="field"><label className="label">電話（逗號分隔）</label><input className="input" value={form.phones} onChange={e => set("phones", e.target.value)} placeholder="02-1234-5678, 0912-345-678" /></div>
       <div className="field"><label className="label">分類 tags</label>
         <div className="row gap6 wrap">{dicts.tags.map(t => <span key={t.tag_id} className={"chip" + (form.tags.includes(t.tag_id) ? " on" : "")} onClick={() => toggleTag(t.tag_id)}>{t.tag_name}</span>)}</div></div>
+      <div className="field"><label className="label">營業時間</label>
+        <OpenTimeEditor hours={form.opentime} onChange={v => set("opentime", v)} />
+        <div className="tiny muted" style={{ marginTop: 4 }}>跨午夜：直接填例如 22:00–02:00；備註用於特殊營業（如「過年休」），有備註的列不參與重疊檢查。</div>
+      </div>
       {editId && <div className="field"><label className="label">照片管理</label>
         <div className="photo-cell">
           {photos.map(ph => <div key={ph.photo_id} className={"photo-thumb" + (ph.is_main ? " main" : "")}>
