@@ -6,7 +6,8 @@ require_once __DIR__ . '/../../lib/restaurants.php';
 requireMethod('POST');
 ensureSession();
 
-$filters = restaurantParseFilters(getInput(), [
+$input = getInput();
+$filters = restaurantParseFilters($input, [
     'limit' => 200,
     'offset' => 0,
 ]);
@@ -27,7 +28,12 @@ if (!$available) {
     ]);
 }
 
-$restaurantId = $available[random_int(0, count($available) - 1)];
+$requested = isset($input['restaurant_id']) ? (int)$input['restaurant_id'] : 0;
+if ($requested > 0 && in_array($requested, $available, true)) {
+    $restaurantId = $requested;
+} else {
+    $restaurantId = $available[random_int(0, count($available) - 1)];
+}
 $drawn[] = $restaurantId;
 $_SESSION[$sessionKey] = array_values(array_unique($drawn));
 

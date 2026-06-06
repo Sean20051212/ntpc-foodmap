@@ -45,30 +45,6 @@ function FilterPanel({ dicts, f, set, count, onClear, onDistrictPick }) {
   </div>;
 }
 
-function ActiveFilters({ dicts, f, appliedBbox, count, onRemove, onClear }) {
-  if (!dicts) return null;
-  const labels = [];
-  const districtMap = new Map(dicts.districts.map(d => [d.zipcode, d.district_name]));
-  const tagMap = new Map(dicts.tags.map(t => [t.tag_id, t.tag_name]));
-  if (f.keyword.trim()) labels.push({ key: "keyword", label: f.keyword.trim() });
-  f.districts.forEach(id => labels.push({ key: "district:" + id, label: districtMap.get(id) || id, onRemove: () => onRemove("district", id) }));
-  f.tags.forEach(id => labels.push({ key: "tag:" + id, label: tagMap.get(id) || id, onRemove: () => onRemove("tag", id) }));
-  if (f.minRating) labels.push({ key: "minRating", label: "評分 ≥ " + f.minRating + "★" });
-  if (f.maxDist) labels.push({ key: "maxDist", label: "距離 ≤ " + (f.maxDist >= 1000 ? "1km" : f.maxDist + "m") });
-  if (appliedBbox) labels.push({ key: "bbox", label: "目前地圖區域" });
-  if (!labels.length) return null;
-  return <div className="active-filters">
-    <div className="active-filter-row">
-      <span className="active-filter-title">目前篩選</span>
-      {labels.map(item => <button key={item.key} className="filter-token" onClick={item.onRemove || (() => onRemove(item.key))}>
-        <span>{item.label}</span><b>×</b>
-      </button>)}
-      <button className="btn btn-ghost btn-sm reset-filters" onClick={onClear}>重設篩選</button>
-    </div>
-    <div className="tiny muted">符合條件 {count == null ? "…" : count} 家，點擊條件可立即解除。</div>
-  </div>;
-}
-
 function ExploreMap({ restaurants, center, onFav, onIdle }) {
   const elRef = useRef(), mapRef = useRef(), layerRef = useRef(), favRef = useRef(onFav);
   favRef.current = onFav;
@@ -128,12 +104,16 @@ function buildPopup(r, onFav) {
 }
 
 function WheelDock({ params, onClose }) {
-  const SPIN_MS = 1250;
-  const [pool, setPool] = useState(null), [candidates, setCandidates] = useState([]), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false), [spinId, setSpinId] = useState(0);
+  const SPIN_MS = 2600;
+  const SLICE_COUNT = 8;
+  const [pool, setPool] = useState(null), [candidates, setCandidates] = useState([]), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const drawnRef = useRef([]);
   const loadPool = async () => {
-    const d = await api("GET", "/api/restaurants/wheel_pool", params);
+    drawnRef.current = [];
+    const d = await api("GET", "/api/restaurants/wheel_pool", { ...params, count: SLICE_COUNT });
     setPool(d.restaurant_ids.length);
-    setCandidates((d.candidates || []).slice(0, 8));
+    setCandidates((d.candidates || []).slice(0, SLICE_COUNT));
   };
   useEffect(() => { loadPool().catch(() => { setPool(0); setCandidates([]); }); }, []);
   function truncateLabel(text) {
@@ -143,21 +123,43 @@ function WheelDock({ params, onClose }) {
   };
 
   const draw = async () => {
-    if (spinning || pool === 0) return;
-    const startedAt = performance.now();
-    setSpinId(id => id + 1);
+    if (spinning || !candidates.length) return;
     setSpinning(true); setExhausted(false); setResult(null);
-    try {
-      const d = await api("POST", "/api/restaurants/wheel_draw", params);
-      const delay = Math.max(0, SPIN_MS - (performance.now() - startedAt));
-      setTimeout(() => {
-        setSpinning(false);
-        if (d.exhausted) { setExhausted(true); setResult(null); }
-        else setResult(d.restaurant);
-      }, delay);
-    } catch (e) { setSpinning(false); toast(e.message, "err"); }
+    const winIndex = Math.floor(Math.random() * candidates.length);
+    const winner = candidates[winIndex];
+    // Wheel-frame slice center for slot i is at angle (i*45 + 22.5) measured clockwise from "up".
+    // Wheel rotates clockwise by R; after rotation, slot i sits at world angle (winCenterDeg + R) mod 360.
+    // Pointer is at world angle 0 (top). We need (winCenterDeg + R) % 360 = 0, i.e. R = -winCenterDeg (mod 360).
+    const winCenterDeg = winIndex * 45 + 22.5;
+    const base = rotation;
+    const currentMod = ((base % 360) + 360) % 360;
+    const targetMod = ((-winCenterDeg) % 360 + 360) % 360;
+    let delta = targetMod - currentMod;
+    if (delta <= 0) delta += 360;
+    const target = base + 360 * 5 + delta;
+    setRotation(target);
+    setTimeout(async () => {
+      setSpinning(false);
+      setResult(winner);
+      drawnRef.current = [...drawnRef.current, winner.restaurant_id];
+      try { await api("POST", "/api/restaurants/wheel_draw", { ...params, restaurant_id: winner.restaurant_id }); } catch (e) { /* server tracking optional */ }
+      try {
+        const visibleIds = candidates.filter((_, i) => i !== winIndex).map(c => c.restaurant_id);
+        const excludeIds = [...new Set([...visibleIds, ...drawnRef.current])];
+        const r = await api("GET", "/api/restaurants/wheel_pool", { ...params, count: 1, exclude: excludeIds.join(",") });
+        const replacement = r.candidates && r.candidates[0];
+        setPool((r.restaurant_ids?.length ?? 0));
+        setCandidates(prev => {
+          const copy = prev.slice();
+          if (replacement) copy[winIndex] = replacement;
+          else copy.splice(winIndex, 1);
+          if (copy.length === 0) setExhausted(true);
+          return copy;
+        });
+      } catch (e) { toast(e.message, "err"); }
+    }, SPIN_MS);
   };
-  const reset = async () => { await api("POST", "/api/restaurants/wheel_reset", params); setExhausted(false); setResult(null); await loadPool(); toast("已重設輪盤"); };
+  const reset = async () => { await api("POST", "/api/restaurants/wheel_reset", params); setExhausted(false); setResult(null); setRotation(0); await loadPool(); toast("已重設輪盤"); };
   return <div className="wheel-dock">
     <div className="row between center" style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
       <div className="h3">🎯 吃什麼輪盤</div><button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
@@ -165,26 +167,28 @@ function WheelDock({ params, onClose }) {
     <div style={{ padding: 18, overflow: "auto", flex: 1 }}>
       <div className="wheel-stage">
         <div className="wheel-ptr">▼</div>
-        <div key={spinId} className={"wheel-spin" + (spinning ? " spinning" : "")}>
+        <div className={"wheel-spin" + (spinning ? " spinning" : "")} style={{ transform: `rotate(${rotation}deg)` }}>
           {candidates.length > 0 ? candidates.map((r, i) => {
             const deg = i * 45 + 22.5;
             const label = truncateLabel(String(r.restaurant_name || "候選餐廳").trim());
             return <div className="wheel-label" style={{ transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(calc(-1 * var(--wheel-label-radius)))` }} key={r.restaurant_id || i}>
-              <span title={r.restaurant_name}><b>{label}</b></span>
+              <span style={{ transform: `rotate(${-rotation - deg}deg)` }} title={r.restaurant_name}>{label}</span>
             </div>;
           }) : <span>?</span>}
         </div>
+        <button className="wheel-center-btn" disabled={spinning || !candidates.length} onClick={draw}>
+          {spinning ? "抽選中" : "轉動！"}
+        </button>
       </div>
       {exhausted ? <Empty icon="🪹" title="候選都抽完了！" sub="重設後可重新抽過" action={<button className="btn btn-primary" onClick={reset}>重設輪盤</button>} />
         : result ? <div className="card row" style={{ marginBottom: 14, cursor: "pointer" }} onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>
-          <Photo url={result.photos?.[0]?.url} alt={result.restaurant_name} style={{ flex: "0 0 84px", alignSelf: "stretch" }} />
+          <Photo url={result.photos?.[0]?.url || result.main_photo_url} alt={result.restaurant_name} style={{ flex: "0 0 84px", alignSelf: "stretch" }} />
           <div style={{ padding: "10px 12px" }}><div className="h3">{result.restaurant_name}</div>
             <div className="row center gap6 small ink2"><span className="rating-num">{result.rating_avg.toFixed(1)}</span><Stars value={result.rating_avg} size={12} /><span>· {result.district_name}</span></div>
             {result.distance_m != null && <div className="tiny muted">約 {result.distance_m >= 1000 ? (result.distance_m / 1000).toFixed(1) + "km" : result.distance_m + "m"}</div>}</div>
         </div>
           : <div className="count-pill" style={{ marginBottom: 14 }}>依目前篩選 <b>{pool == null ? "…" : pool}</b> 家候選</div>}
       {!exhausted && <div className="col gap8">
-        <button className="btn btn-primary btn-lg btn-block" disabled={spinning || pool === 0} onClick={draw}>{spinning ? "抽選中…" : result ? "再抽一次" : "開始抽 🎲"}</button>
         {result && <button className="btn btn-outline btn-block" onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>看餐廳詳情</button>}
         <div className="tiny muted" style={{ textAlign: "center", lineHeight: 1.6 }}>抽過的不會再抽到<br /><span onClick={reset} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 700 }}>重設輪盤</span></div>
       </div>}
@@ -300,8 +304,6 @@ function PageExplore({ me }) {
       <button className={"btn btn-sm wheel-toggle " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => setWheel(w => !w)}>🎯 輪盤</button>
       <button className="btn btn-outline btn-sm show-m" onClick={() => setMFilter(true)}>⚙ 篩選{activeCount ? " (" + activeCount + ")" : ""}</button>
     </div>
-
-    <ActiveFilters dicts={dicts} f={f} appliedBbox={appliedBbox} count={count} onRemove={removeFilter} onClear={clearAll} />
 
     {/* mobile list/map toggle */}
     <div className="exp-mtoggle">
