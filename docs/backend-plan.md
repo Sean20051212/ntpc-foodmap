@@ -340,7 +340,11 @@ session_start();
 - 邏輯：
   - 動態組 WHERE：district / tag / rating / bbox / keyword
   - 距離過濾用 SQL Haversine `6371000 * 2 * ASIN(SQRT(POW(SIN(RADIANS(? - latitude)/2),2) + COS(RADIANS(?)) * COS(RADIANS(latitude)) * POW(SIN(RADIANS(? - longitude)/2),2)))` AS `distance_m`
-  - `is_open_now`：LEFT JOIN opentime WHERE day=WEEKDAY(NOW()) AND NOW() BETWEEN start_time AND end_time AND spec_rec IS NULL，存在即 1
+  - `is_open_now`：用 `EXISTS (SELECT 1 FROM opentime ...)` 子查詢，含三個 OR 分支處理跨午夜情境：
+    - A. 今天的列、`start<=end`、`CURTIME() BETWEEN start AND end`（正常時段）
+    - B. 今天的列、`start>end`、`CURTIME() >= start`（跨午夜前半，例：週一 22:00-02:00 的週一晚上）
+    - C. 昨天的列（`MOD(DAYOFWEEK(NOW())-1 + 6, 7)`）、`start>end`、`CURTIME() <= end`（跨午夜後半，例：週一 22:00-02:00 的週二凌晨）
+    - 實作見 `lib/restaurants.php` 的 `restaurantOpenNowSql()`
   - `is_favorited`：若登入 LEFT JOIN favorites
   - `main_photo_url`：LEFT JOIN restaurant_photos ON is_main=1
   - `tags`：另一次查詢 by restaurant_id IN (...) 後在 PHP 端 group

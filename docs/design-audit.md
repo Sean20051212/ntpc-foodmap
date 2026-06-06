@@ -12,7 +12,7 @@
 | # | 項目 | 影響到本檔章節 |
 |---|---|---|
 | DB-1 | `date` 欄位抽出為獨立資料表 | §7 共用資料字典 |
-| DB-2 | `opentime` 需支援跨日（營業到凌晨） | §3-E「是否營業中」、§7 opentime |
+| DB-2 ✅ | **`opentime` 跨日判斷**（已完成 2026-06-06） — `lib/restaurants.php` `restaurantOpenNowSql()` 補上「昨天列、`start>end`、`CURTIME<=end`」第三分支，解決週一存 22:00-02:00、週二凌晨查詢誤判打烊的 bug | §3-E「是否營業中」 |
 | DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
 | DB-4 | `restaurant_photos` 移除 `sort_order` | §7 photos |
 | DB-5 | 拿掉 `main_marker` generated column，將 `is_main` 改為 BOOLEAN + DB 限制「每店至多一筆 true」 | §3-D / §7 photos |
@@ -104,7 +104,7 @@
 | 6 張圖 + 縮圖切換 | 🟡 | 有幾張顯示幾張（決策），不補 placeholder |
 | 平均評分、收藏鈕 | ✅ | 觸發器自動算 |
 | 營業 / 特殊營業資訊 | ✅ | `opentime(day, start_time, end_time, spec_rec)` |
-| 是否營業中 | 🟡 | 後端比 `NOW()`；`day=0 AND spec_rec IS NOT NULL` 是 sentinel，須排除 |
+| 是否營業中 | ✅ | 後端 SQL 子查詢比 `NOW()`，含跨午夜處理（今天 / 昨天列各一條件）；`day=0 AND spec_rec IS NOT NULL` 是 sentinel，須排除 |
 | 評論表單 1~5 星 + 內文 | ✅ | `reviews`，`CHECK rating BETWEEN 1 AND 5` |
 | 每人每店一則評論 | ✅ | PK 已強制；重複提交 = `ON DUPLICATE KEY UPDATE`（決策） |
 | 顯示評論者帳號 / 評分 / 內文 | ✅ | JOIN users |

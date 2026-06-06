@@ -178,7 +178,7 @@ ntpc-foodmap/
 | # | 項目 | 說明 |
 |---|---|---|
 | DB-1 | `date` 抽出獨立表 | 將餐廳的日期欄位獨立為資料表 |
-| DB-2 | `opentime` 跨日 | 考慮營業到凌晨的情境（例如 18:00–02:00），目前 `start_time < end_time` 假設會壞掉 |
+| DB-2 ✅ | `opentime` 跨日（2026-06-06 完成）| `lib/restaurants.php` `restaurantOpenNowSql()` 加上第三分支：當「昨天」那列 `start>end` 且 `CURTIME<=end` 時也算營業中，解決週一存 22:00-02:00、週二凌晨查詢被誤判打烊 |
 | DB-3 | `districts` 移除經緯度 | 移除 `center_latitude/center_longitude`；改由後端比對 `address` 是否存在於 `districts` 表來判斷是否位於新北市範圍內 |
 | DB-4 | `restaurant_photos` 移除排序欄位 | 拿掉 `sort_order`，避免新增 / 刪除照片時順序產生空缺 |
 | DB-5 | 主要標記改布林 | 移除 `main_marker` generated column 設計，將 `is_main` 改為 BOOLEAN 並加 DB 限制：每家餐廳只能一筆 `is_main = true` |
