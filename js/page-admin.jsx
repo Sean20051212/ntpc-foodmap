@@ -230,7 +230,7 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
       {editId && <div className="field"><label className="label">照片管理</label>
         <div className="photo-cell">
           {photos.map(ph => <div key={ph.photo_id} className={"photo-thumb" + (ph.is_main ? " main" : "")}>
-            <img src={ph.url} alt="" onClick={() => setMain(ph)} title="設為主圖" />
+            <img src={photoSrc(ph)} alt="" onClick={() => setMain(ph)} title="設為主圖" />
             {ph.is_main ? <span className="pbadge">主圖</span> : null}
             <button className="pdel" onClick={() => delPhoto(ph)}>✕</button>
           </div>)}

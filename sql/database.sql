@@ -195,7 +195,8 @@ DROP TABLE IF EXISTS `restaurant_photos`;
 CREATE TABLE `restaurant_photos` (
   `photo_id` int(11) NOT NULL AUTO_INCREMENT,
   `restaurant_id` int(11) NOT NULL,
-  `url` varchar(500) NOT NULL COMMENT '絕對網址',
+  `url` varchar(500) NOT NULL COMMENT '外部來源 URL（必填）',
+  `local_path` varchar(500) DEFAULT NULL COMMENT '本機檔案相對路徑，由 sync_photos 下載後填入',
   `is_main` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`photo_id`),
   KEY `idx_photos_restaurant` (`restaurant_id`),

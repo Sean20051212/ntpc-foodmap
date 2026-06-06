@@ -5,6 +5,8 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 /* ---------- helpers ---------- */
 const priceText = (lv) => lv ? "$".repeat(lv) : "—";
+// photo render：優先用 sync_photos 下載到本機的 local_path，缺則 fallback 到外部 url
+const photoSrc = (p) => (p && (p.local_path || p.url)) || null;
 const photoFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'%3E%3Crect width='640' height='400' fill='%23FAF6F1'/%3E%3Crect y='246' width='640' height='154' fill='%23FCEBE2'/%3E%3Ccircle cx='128' cy='96' r='48' fill='%23F4EEE7'/%3E%3Ccircle cx='526' cy='92' r='60' fill='%23F7DDD0'/%3E%3Cg transform='translate(220 72)' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M48 132c0 54 28 84 64 84s64-30 64-84H48z' fill='%23fff' stroke='%23B23C18' stroke-width='8'/%3E%3Cpath d='M66 134h92' stroke='%23E1542A' stroke-width='10'/%3E%3Cpath d='M76 104c-16-18-12-38 4-56M112 100c-14-18-10-40 8-58M148 104c-14-16-12-36 2-50' stroke='%236E635A' stroke-width='8'/%3E%3C/g%3E%3Ctext x='320' y='342' text-anchor='middle' font-family='Noto Sans TC, Microsoft JhengHei, sans-serif' font-size='24' font-weight='700' fill='%23B23C18'%3E新北美食地圖%3C/text%3E%3C/svg%3E";
 function fmtDate(s) { return (s || "").slice(0, 10); }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }

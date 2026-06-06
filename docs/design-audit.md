@@ -16,7 +16,7 @@
 | DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
 | DB-4 ✅ | **`restaurant_photos` 移除 `sort_order`**（2026-06-06 完成）| §7 photos |
 | DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
-| DB-6 | 餐廳照片改存本機伺服器（不再用外部 URL） | §6 / §7 |
+| DB-6 ✅ | **餐廳照片本機備援**（2026-06-06 完成）| §7 photos：`url` 為外部來源、`local_path` 為本機路徑；`scripts/sync_photos.mjs` cron-style 下載；前端用 `photoSrc(p) = p.local_path || p.url` |
 | DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
 | DB-9 | 在文件中完整說明 `google_place_id` 用途 | §7 |
@@ -205,7 +205,7 @@
 - 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`
 - 區：`zipcode` (3 chars), `district_name`, `center_latitude`, `center_longitude`
 - 分類：`tag_id` (int), `tag_name`
-- 照片：`photo_id`, `restaurant_id`, `url`, `is_main` (0/1)
+- 照片：`photo_id`, `restaurant_id`, `url`（外部來源）, `local_path`（本機路徑，可為 NULL）, `is_main` (0/1)
 - 電話：`phone_id`, `restaurant_id`, `phone_number`
 - 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`；UNIQUE `(restaurant_id, day, start_time, end_time, spec_rec)` 擋完全重複列；時段重疊由後端 `adminAssertHoursNoOverlap` 在寫入時檢查
 - 星期查找表：`day_id` (0~6), `day_name_zh` (週日/週一/...), `day_name_en` (Sunday/Monday/...)

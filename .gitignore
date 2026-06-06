@@ -29,6 +29,9 @@ desktop.ini
 /sql/*.dump
 /sql/snapshots/
 
+# 本機照片儲存（由 sync_photos.mjs 從外部 URL 下載而來，不進 repo）
+/uploads/
+
 # 暫存
 *.tmp
 *.cache

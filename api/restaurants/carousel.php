@@ -9,7 +9,7 @@ $input = getInput();
 $limit = requireLimit($input, 10, 50);
 
 $stmt = db()->prepare(
-    'SELECT p.url, r.restaurant_id, r.restaurant_name
+    'SELECT p.url, p.local_path, r.restaurant_id, r.restaurant_name
      FROM restaurant_photos p
      JOIN restaurants r ON r.restaurant_id = p.restaurant_id
      WHERE p.is_main = 1
@@ -22,6 +22,7 @@ $stmt->execute();
 $photos = array_map(static function (array $row): array {
     return [
         'url' => $row['url'],
+        'local_path' => $row['local_path'],
         'restaurant_id' => (int) $row['restaurant_id'],
         'restaurant_name' => $row['restaurant_name'],
     ];

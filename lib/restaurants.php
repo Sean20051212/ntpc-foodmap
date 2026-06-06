@@ -328,7 +328,7 @@ function restaurantFetchList(array $filters): array
             r.rating_avg,
             r.rating_count,
             r.price_level,
-            p.url AS main_photo_url,
+            COALESCE(p.local_path, p.url) AS main_photo_url,
             ' . $distanceSql . ' AS distance_m,
             CASE WHEN ' . restaurantOpenNowSql() . ' THEN 1 ELSE 0 END AS is_open_now,
             ' . $favoriteSelect . '
@@ -439,7 +439,7 @@ function restaurantFetchDetail(int $restaurantId): ?array
     ];
 
     $photos = db()->prepare(
-        'SELECT photo_id, url, is_main
+        'SELECT photo_id, url, local_path, is_main
          FROM restaurant_photos
          WHERE restaurant_id = ?
          ORDER BY is_main DESC, photo_id ASC'
@@ -449,6 +449,7 @@ function restaurantFetchDetail(int $restaurantId): ?array
         return [
             'photo_id' => (int) $photo['photo_id'],
             'url' => $photo['url'],
+            'local_path' => $photo['local_path'],
             'is_main' => (int) $photo['is_main'],
         ];
     }, $photos->fetchAll());

@@ -14,10 +14,12 @@ $isMain = adminBool($input, 'is_main');
 
 adminEnsureRestaurantExists($restaurantId);
 
+$existingUrl = null;
 if ($photoId !== null) {
-    $exists = db()->prepare('SELECT 1 FROM restaurant_photos WHERE photo_id = ?');
+    $exists = db()->prepare('SELECT url FROM restaurant_photos WHERE photo_id = ?');
     $exists->execute([$photoId]);
-    if (!$exists->fetchColumn()) {
+    $existingUrl = $exists->fetchColumn();
+    if ($existingUrl === false) {
         jsonErr('not_found', '找不到照片', 404);
     }
 }
@@ -45,11 +47,20 @@ try {
         $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0]);
         $photoId = (int) $pdo->lastInsertId();
     } else {
-        $stmt = $pdo->prepare(
-            'UPDATE restaurant_photos
-             SET restaurant_id = ?, url = ?, is_main = ?
-             WHERE photo_id = ?'
-        );
+        // url 變動 → 清空 local_path 觸發 sync_photos 重新下載
+        if ($existingUrl !== null && $existingUrl !== $url) {
+            $stmt = $pdo->prepare(
+                'UPDATE restaurant_photos
+                 SET restaurant_id = ?, url = ?, local_path = NULL, is_main = ?
+                 WHERE photo_id = ?'
+            );
+        } else {
+            $stmt = $pdo->prepare(
+                'UPDATE restaurant_photos
+                 SET restaurant_id = ?, url = ?, is_main = ?
+                 WHERE photo_id = ?'
+            );
+        }
         $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0, $photoId]);
     }
 
@@ -62,7 +73,7 @@ try {
 }
 
 $photo = db()->prepare(
-    'SELECT photo_id, restaurant_id, url, is_main
+    'SELECT photo_id, restaurant_id, url, local_path, is_main
      FROM restaurant_photos
      WHERE photo_id = ?'
 );
@@ -74,6 +85,7 @@ jsonOk([
         'photo_id' => (int) $row['photo_id'],
         'restaurant_id' => (int) $row['restaurant_id'],
         'url' => $row['url'],
+        'local_path' => $row['local_path'],
         'is_main' => (int) $row['is_main'],
     ],
 ]);

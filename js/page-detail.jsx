@@ -5,12 +5,12 @@ function Gallery({ photos }) {
   const one = photos.length <= 1;
   const cur = photos[i] || {};
   return <div className="gallery">
-    {cur.url && <img className="gallery-main" src={cur.url} alt="" />}
+    {photoSrc(cur) && <img className="gallery-main" src={photoSrc(cur)} alt="" />}
     {!one && <>
       <div className="gal-count">{i + 1} / {photos.length}</div>
       <button className="gal-arrow l" onClick={() => setI(x => (x - 1 + photos.length) % photos.length)}>‹</button>
       <button className="gal-arrow r" onClick={() => setI(x => (x + 1) % photos.length)}>›</button>
-      <div className="gal-thumbs">{photos.slice(0, 6).map((p, k) => <img key={k} className={"gal-thumb" + (k === i ? " on" : "")} src={p.url} onClick={() => setI(k)} alt="" />)}</div>
+      <div className="gal-thumbs">{photos.slice(0, 6).map((p, k) => <img key={k} className={"gal-thumb" + (k === i ? " on" : "")} src={photoSrc(p)} onClick={() => setI(k)} alt="" />)}</div>
     </>}
   </div>;
 }

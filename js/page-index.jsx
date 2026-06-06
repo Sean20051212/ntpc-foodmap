@@ -15,7 +15,7 @@ function PageIndex({ me }) {
     {/* hero */}
     <section className="home-hero">
       {photos.map((p, i) => <div key={i} onClick={() => navigate("#/detail?id=" + p.restaurant_id)} style={{ position: "absolute", inset: 0, opacity: i === idx ? 1 : 0, transition: "opacity 1.1s ease", cursor: "pointer" }}>
-        <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <img src={photoSrc(p)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(34,26,20,.30) 0%, rgba(34,26,20,.20) 40%, rgba(34,26,20,.72) 100%)" }} />
       </div>)}
       <div className="container home-hero-inner">
