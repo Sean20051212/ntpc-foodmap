@@ -136,14 +136,12 @@ function WheelDock({ params, onClose }) {
     setCandidates((d.candidates || []).slice(0, 8));
   };
   useEffect(() => { loadPool().catch(() => { setPool(0); setCandidates([]); }); }, []);
-  const labelLines = (name) => {
-    const text = String(name || "候選餐廳").trim();
-    const short = text.length > 9 ? text.slice(0, 8) + "…" : text;
-    const size = short.length > 6 ? 3 : 4;
-    const lines = [];
-    for (let i = 0; i < short.length; i += size) lines.push(short.slice(i, i + size));
-    return lines.slice(0, 3);
+  function truncateLabel(text) {
+    return text.length > 6
+      ? text.slice(0, 6) + "..."
+      : text;
   };
+
   const draw = async () => {
     if (spinning || pool === 0) return;
     const startedAt = performance.now();
@@ -170,8 +168,9 @@ function WheelDock({ params, onClose }) {
         <div key={spinId} className={"wheel-spin" + (spinning ? " spinning" : "")}>
           {candidates.length > 0 ? candidates.map((r, i) => {
             const deg = i * 45 + 22.5;
-            return <div className="wheel-label" style={{ transform: `rotate(${deg}deg)` }} key={r.restaurant_id || i}>
-              <span style={{ transform: `rotate(${-deg}deg)` }}>{labelLines(r.restaurant_name).map((line, k) => <b key={k}>{line}</b>)}</span>
+            const label = truncateLabel(String(r.restaurant_name || "候選餐廳").trim());
+            return <div className="wheel-label" style={{ transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(calc(-1 * var(--wheel-label-radius)))` }} key={r.restaurant_id || i}>
+              <span title={r.restaurant_name}><b>{label}</b></span>
             </div>;
           }) : <span>?</span>}
         </div>
