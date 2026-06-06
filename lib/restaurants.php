@@ -245,6 +245,8 @@ function restaurantNormalizeListRow(array $row): array
         'rating_avg' => (float) $row['rating_avg'],
         'rating_count' => (int) $row['rating_count'],
         'price_level' => $row['price_level'] === null ? null : (int) $row['price_level'],
+        'price_level_symbol' => $row['price_level_symbol'] ?? null,
+        'price_level_label_zh' => $row['price_level_label_zh'] ?? null,
         'main_photo_url' => $row['main_photo_url'],
         'distance_m' => $row['distance_m'] === null ? null : (int) round((float) $row['distance_m']),
         'is_open_now' => (bool) $row['is_open_now'],
@@ -328,12 +330,15 @@ function restaurantFetchList(array $filters): array
             r.rating_avg,
             r.rating_count,
             r.price_level,
+            pl.symbol AS price_level_symbol,
+            pl.label_zh AS price_level_label_zh,
             COALESCE(p.local_path, p.url) AS main_photo_url,
             ' . $distanceSql . ' AS distance_m,
             CASE WHEN ' . restaurantOpenNowSql() . ' THEN 1 ELSE 0 END AS is_open_now,
             ' . $favoriteSelect . '
         FROM restaurants r
         LEFT JOIN districts d ON d.zipcode = r.zipcode
+        LEFT JOIN price_levels pl ON pl.price_level_id = r.price_level
         LEFT JOIN restaurant_photos p ON p.restaurant_id = r.restaurant_id AND p.is_main = 1'
         . $favoriteJoin
         . $where
@@ -399,11 +404,15 @@ function restaurantFetchDetail(int $restaurantId): ?array
             r.rating_avg,
             r.rating_count,
             r.price_level,
+            pl.symbol AS price_level_symbol,
+            pl.label_zh AS price_level_label_zh,
+            pl.label_en AS price_level_label_en,
             r.google_place_id,
             CASE WHEN ' . restaurantOpenNowSql() . ' THEN 1 ELSE 0 END AS is_open_now,
             ' . $favoriteSelect . '
          FROM restaurants r
-         JOIN districts d ON d.zipcode = r.zipcode'
+         JOIN districts d ON d.zipcode = r.zipcode
+         LEFT JOIN price_levels pl ON pl.price_level_id = r.price_level'
          . $favoriteJoin .
         ' WHERE r.restaurant_id = :restaurant_id'
     );
@@ -427,6 +436,9 @@ function restaurantFetchDetail(int $restaurantId): ?array
         'rating_avg' => (float) $row['rating_avg'],
         'rating_count' => (int) $row['rating_count'],
         'price_level' => $row['price_level'] === null ? null : (int) $row['price_level'],
+        'price_level_symbol' => $row['price_level_symbol'],
+        'price_level_label_zh' => $row['price_level_label_zh'],
+        'price_level_label_en' => $row['price_level_label_en'],
         'google_place_id' => $row['google_place_id'],
         'is_open_now' => (bool) $row['is_open_now'],
         'is_favorited' => (bool) $row['is_favorited'],

@@ -186,7 +186,7 @@ ntpc-foodmap/
 | DB-7 | 標籤品質 | 用 AI 驗證每個 tag 都有對應餐廳；確認 tag 定義不過於細分 / 專一 |
 | DB-8 | ERD 正規化 | 用 AI 確認整體 ERD 符合正規化要求 |
 | DB-9 ✅ | Google Place ID 用途說明（2026-06-07 完成）| 詳見 [docs/design-audit.md §7.1](docs/design-audit.md)：用於 Google Maps 精確深層連結（避免店名歧義）、enrich_google 斷點續跑（省 API 額度）、未來接 Reviews/Photos 擴充的對應鍵；UNIQUE 確保 1 餐廳對 1 Google 地點 |
-| DB-10 | `price_level` 抽出獨立表 | 消費級距改為獨立資料表 |
+| DB-10 ✅ | `price_level` 抽出獨立表（2026-06-07 完成）| 新建 `price_levels(price_level_id, symbol, label_zh, label_en)` 四列；`restaurants.price_level` 由 CHECK 改 FK；新增 `/api/dicts/price_levels` 端點；後端 list/detail JOIN 帶出 `price_level_symbol` / `price_level_label_zh`；後台編輯下拉顯示「$$ 平價」 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（2026-06-06 完成）| 新表三欄 day_id / day_name_zh / day_name_en；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉寫死 `DAYS` 常數。回應教授對 opentime.day 正規化的質疑 |
 | DB-12 ✅ | **opentime 時段衝突清理 + 寫入防呆**（2026-06-06 完成）| (a) `lib/admin.php` `adminAssertHoursNoOverlap` 後端寫入時阻擋重疊段；(b) `opentime` 加 `UNIQUE (restaurant_id, day, start_time, end_time, spec_rec)`；(c) `scripts/check_opentime_conflicts.php` 離線檢測；(d) `scripts/fix_opentime_conflicts.php` 三步驟自動清理（catchall 偵測 / 包含 reduction / partial overlap union），對 live DB 套用後 56 家清乾淨，0 衝突 |
 

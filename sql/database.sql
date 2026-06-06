@@ -159,6 +159,28 @@ INSERT INTO `opentime` VALUES (1,1,0,'11:00:00','14:00:00','不定期公休,來�
 UNLOCK TABLES;
 
 --
+-- Table structure for table `price_levels`
+--
+
+DROP TABLE IF EXISTS `price_levels`;
+CREATE TABLE `price_levels` (
+  `price_level_id` tinyint(4) NOT NULL,
+  `symbol` varchar(8) NOT NULL,
+  `label_zh` varchar(20) NOT NULL,
+  `label_en` varchar(20) NOT NULL,
+  PRIMARY KEY (`price_level_id`),
+  UNIQUE KEY `uk_price_levels_symbol` (`symbol`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+LOCK TABLES `price_levels` WRITE;
+INSERT INTO `price_levels` VALUES
+  (1,'$','便宜','Cheap'),
+  (2,'$$','平價','Affordable'),
+  (3,'$$$','中價','Mid-range'),
+  (4,'$$$$','高價','Expensive');
+UNLOCK TABLES;
+
+--
 -- Table structure for table `restaurant_phones`
 --
 
@@ -285,7 +307,7 @@ CREATE TABLE `restaurants` (
   `zipcode` char(3) NOT NULL,
   `latitude` decimal(10,7) NOT NULL,
   `longitude` decimal(10,7) NOT NULL,
-  `price_level` tinyint(4) DEFAULT NULL COMMENT '1: ~200 / 2: 200~600 / 3: 600~1500 / 4: 1500+',
+  `price_level` tinyint(4) DEFAULT NULL COMMENT 'FK → price_levels.price_level_id（1=$/便宜 ... 4=$$$$/高價）',
   `rating_avg` decimal(3,2) NOT NULL DEFAULT 0.00 COMMENT 'trigger 維護',
   `rating_count` int(11) NOT NULL DEFAULT 0 COMMENT 'trigger 維護',
   `google_place_id` varchar(100) DEFAULT NULL,
@@ -296,7 +318,7 @@ CREATE TABLE `restaurants` (
   KEY `idx_restaurants_rating_avg` (`rating_avg`),
   KEY `idx_restaurants_zipcode` (`zipcode`),
   CONSTRAINT `fk_restaurants_zipcode` FOREIGN KEY (`zipcode`) REFERENCES `districts` (`zipcode`) ON UPDATE CASCADE,
-  CONSTRAINT `chk_restaurants_price_level` CHECK (`price_level` is null or `price_level` between 1 and 4),
+  CONSTRAINT `fk_restaurants_price_level` FOREIGN KEY (`price_level`) REFERENCES `price_levels` (`price_level_id`) ON UPDATE CASCADE,
   CONSTRAINT `chk_restaurants_rating_avg` CHECK (`rating_avg` between 0 and 5)
 ) ENGINE=InnoDB AUTO_INCREMENT=694 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

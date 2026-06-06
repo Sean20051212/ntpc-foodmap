@@ -20,7 +20,7 @@
 | DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
 | DB-9 ✅ | **完整說明 `google_place_id` 用途**（2026-06-07 完成）| §7.1 |
-| DB-10 | `price_level` 抽出為獨立資料表 | §7 |
+| DB-10 ✅ | **`price_level` 抽出 `price_levels` 查找表**（2026-06-07 完成）— 新表四欄 `price_level_id / symbol / label_zh / label_en`；restaurants.price_level 由 CHECK 改 FK；新增 `/api/dicts/price_levels` | §7 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（已完成 2026-06-06） — 教授質疑 `day` 應獨立成表以支援 i18n / 元資料擴充。新表三欄：`day_id`, `day_name_zh`, `day_name_en`；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉 `DAYS` 常數 | §3-E、§7、backend §4.4 |
 | BE-2 | 「不在新北市」判定改為地址比對 `districts`（搭配 DB-3） | §3-B / §6 |
 
@@ -202,13 +202,14 @@
 
 兩個 agent 寫程式時用同一套欄位命名（與 schema 對齊）：
 
-- 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`（見下方 §7.1 說明）
+- 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null，FK → `price_levels.price_level_id`), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`（見下方 §7.1 說明）
 - 區：`zipcode` (3 chars), `district_name`, `center_latitude`, `center_longitude`
 - 分類：`tag_id` (int), `tag_name`
 - 照片：`photo_id`, `restaurant_id`, `url`（外部來源）, `local_path`（本機路徑，可為 NULL）, `is_main` (0/1)
 - 電話：`phone_id`, `restaurant_id`, `phone_number`
 - 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`；UNIQUE `(restaurant_id, day, start_time, end_time, spec_rec)` 擋完全重複列；時段重疊由後端 `adminAssertHoursNoOverlap` 在寫入時檢查
 - 星期查找表：`day_id` (0~6), `day_name_zh` (週日/週一/...), `day_name_en` (Sunday/Monday/...)
+- 價位查找表：`price_level_id` (1~4), `symbol` ($/$$/$$$/$$$$), `label_zh` (便宜/平價/中價/高價), `label_en` (Cheap/Affordable/Mid-range/Expensive)
 - 評論：`user_id`, `restaurant_id`, `rating` (1-5), `comment`, `created_at`, `updated_at`
 - 收藏：`user_id`, `restaurant_id`, `created_at`
 - 使用者：`user_id`, `username`, `password_hash`, `is_admin` (0/1), `created_at`, `updated_at`

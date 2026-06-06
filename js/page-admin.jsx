@@ -213,8 +213,8 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
       <div className="row gap16">
         <div className="field grow"><label className="label">區域 zipcode</label>
           <select className="select" value={form.zipcode} onChange={e => set("zipcode", e.target.value)}>{dicts.districts.map(d => <option key={d.zipcode} value={d.zipcode}>{d.district_name}（{d.zipcode}）</option>)}</select></div>
-        <div className="field" style={{ width: 120 }}><label className="label">價位</label>
-          <select className="select" value={form.price_level} onChange={e => set("price_level", +e.target.value)}>{[1, 2, 3, 4].map(n => <option key={n} value={n}>{"$".repeat(n)}</option>)}</select></div>
+        <div className="field" style={{ width: 160 }}><label className="label">價位</label>
+          <select className="select" value={form.price_level} onChange={e => set("price_level", +e.target.value)}>{(dicts.priceLevels || []).map(p => <option key={p.price_level_id} value={p.price_level_id}>{p.symbol} {p.label_zh}</option>)}</select></div>
       </div>
       <div className="row gap16">
         <div className="field grow"><label className="label">緯度 latitude</label><input className="input tnum" type="number" step="0.0001" value={form.latitude} onChange={e => set("latitude", e.target.value)} /></div>
@@ -359,7 +359,7 @@ function AdminUsers() {
 function PageAdmin({ me }) {
   const [tab, setTab] = useState("restaurants");
   const [dicts, setDicts] = useState(null);
-  useEffect(() => { Promise.all([api("GET", "/api/dicts/districts"), api("GET", "/api/dicts/tags")]).then(([d, t]) => setDicts({ districts: d.districts, tags: t.tags })); }, []);
+  useEffect(() => { Promise.all([api("GET", "/api/dicts/districts"), api("GET", "/api/dicts/tags"), api("GET", "/api/dicts/price_levels")]).then(([d, t, p]) => setDicts({ districts: d.districts, tags: t.tags, priceLevels: p.price_levels })); }, []);
   if (!me || !me.is_admin) return <div className="container section"><Empty icon="🔒" title="需要管理員權限" action={<button className="btn btn-primary" onClick={() => navigate("#/")}>回首頁</button>} /></div>;
   return <div className="container section">
     <h1 className="h1" style={{ marginBottom: 6 }}>管理後台</h1>
