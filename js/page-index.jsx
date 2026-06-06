@@ -13,15 +13,15 @@ function PageIndex({ me }) {
 
   return <div>
     {/* hero */}
-    <section style={{ position: "relative", height: 380, overflow: "hidden", background: "var(--ink)" }}>
+    <section className="home-hero">
       {photos.map((p, i) => <div key={i} onClick={() => navigate("#/detail?id=" + p.restaurant_id)} style={{ position: "absolute", inset: 0, opacity: i === idx ? 1 : 0, transition: "opacity 1.1s ease", cursor: "pointer" }}>
         <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(34,26,20,.30) 0%, rgba(34,26,20,.20) 40%, rgba(34,26,20,.72) 100%)" }} />
       </div>)}
-      <div className="container" style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", color: "#fff", gap: 18 }}>
+      <div className="container home-hero-inner">
         <div>
           <div className="eyebrow" style={{ color: "#fff", opacity: .85 }}>NEW TAIPEI CITY · FOOD MAP</div>
-          <h1 className="h1 serif" style={{ fontSize: 40, color: "#fff", marginTop: 8, textShadow: "0 2px 20px rgba(0,0,0,.3)" }}>探索新北的好味道</h1>
+          <h1 className="h1 serif home-hero-title">探索新北的好味道</h1>
         </div>
         <div style={{ width: "100%", maxWidth: 560 }}><SearchBar /></div>
         {photos.length > 1 && <div className="row gap6">{photos.map((_, i) => <span key={i} onClick={() => setIdx(i)} style={{ width: i === idx ? 22 : 8, height: 8, borderRadius: 99, background: i === idx ? "#fff" : "rgba(255,255,255,.5)", cursor: "pointer", transition: "all .3s" }} />)}</div>}

@@ -1,15 +1,68 @@
 /* Admin 後台 — 餐廳管理(CRUD+照片+營業時間) + 使用者管理(promote/demote/delete, 保護 user_id=1) */
 
-// 把 HH:MM:SS 截成 HH:MM 餵給 <input type="time">
+// 把 HH:MM:SS 截成 HH:MM
 const trimTime = (t) => (t || "").slice(0, 5);
-// 24:00:00 是合法 TIME 值表示「當日午夜」，<input type="time"> 不接受 → 顯示成 00:00 + 跨日 flag 提示
-const normalizeForInput = (t) => {
-  if (!t) return "";
-  if (t === "24:00:00" || t === "24:00") return "00:00";
-  return trimTime(t);
+// 24:00:00 是合法 TIME 值表示「當日午夜」，下拉沒這個選項 → 視為 00:00
+const splitHM = (t) => {
+  const v = !t ? "00:00" : (t === "24:00:00" || t === "24:00" ? "00:00" : trimTime(t));
+  const [h, m] = v.split(":");
+  return [h || "00", m || "00"];
 };
 // 寫回時轉成 HH:MM:SS
 const toFullTime = (hhmm) => /^\d{2}:\d{2}$/.test(hhmm) ? hhmm + ":00" : hhmm;
+
+// 24h "HH:MM" → { ampm, hh12, mm }；ampm = "AM" | "PM"
+function to12h(value) {
+  const [h, m] = splitHM(value);
+  const H = parseInt(h, 10);
+  return {
+    ampm: H >= 12 ? "PM" : "AM",
+    hh12: String(H === 0 ? 12 : (H > 12 ? H - 12 : H)).padStart(2, "0"),
+    mm: m,
+  };
+}
+function from12h(ampm, hh12, mm) {
+  let H = parseInt(hh12, 10) || 0;
+  if (H === 12) H = 0;
+  if (ampm === "PM") H += 12;
+  return String(H).padStart(2, "0") + ":" + (mm || "00");
+}
+
+function TimeSelect({ value, onChange }) {
+  const { ampm, hh12, mm } = to12h(value);
+  const [localHH, setLocalHH] = useState(hh12);
+  const [localMM, setLocalMM] = useState(mm);
+  // 上游 value 變動時（例如重新載入餐廳）同步進來
+  useEffect(() => { setLocalHH(hh12); }, [hh12]);
+  useEffect(() => { setLocalMM(mm); }, [mm]);
+
+  const commitHH = () => {
+    const n = parseInt(localHH, 10);
+    if (Number.isNaN(n) || n < 1 || n > 12) { setLocalHH(hh12); return; }
+    const padded = String(n).padStart(2, "0");
+    onChange(from12h(ampm, padded, mm));
+  };
+  const commitMM = () => {
+    const n = parseInt(localMM, 10);
+    if (Number.isNaN(n) || n < 0 || n > 59) { setLocalMM(mm); return; }
+    const padded = String(n).padStart(2, "0");
+    onChange(from12h(ampm, hh12, padded));
+  };
+
+  return <span className="row gap4 center">
+    <select className="select" style={{ width: 70 }} value={ampm} onChange={e => onChange(from12h(e.target.value, hh12, mm))}>
+      <option value="AM">上午</option>
+      <option value="PM">下午</option>
+    </select>
+    <input className="input tnum" style={{ width: 50, textAlign: "center" }} value={localHH}
+      onChange={e => setLocalHH(e.target.value.replace(/\D/g, "").slice(0, 2))}
+      onBlur={commitHH} />
+    <span>:</span>
+    <input className="input tnum" style={{ width: 50, textAlign: "center" }} value={localMM}
+      onChange={e => setLocalMM(e.target.value.replace(/\D/g, "").slice(0, 2))}
+      onBlur={commitMM} />
+  </span>;
+}
 
 // 攤平到分鐘軸做 client overlap check（複刻後端 adminAssertHoursNoOverlap 邏輯）
 function detectHourConflicts(hours) {
@@ -67,9 +120,9 @@ function OpenTimeEditor({ hours, onChange }) {
         {dayRows.length === 0 ? <div className="tiny muted">公休</div> : dayRows.map(({ h, idx }) => {
           const bad = conflicts.has(idx);
           return <div key={idx} className="row gap6 center wrap" style={{ marginTop: 4, padding: 6, background: bad ? "#fff0ee" : "transparent", border: bad ? "1px solid #c83b30" : "1px solid transparent", borderRadius: 6 }}>
-            <input type="time" className="input" style={{ width: 110 }} value={normalizeForInput(h.start_time)} onChange={e => updateRow(idx, { start_time: e.target.value })} />
+            <TimeSelect value={h.start_time} onChange={v => updateRow(idx, { start_time: v })} />
             <span>–</span>
-            <input type="time" className="input" style={{ width: 110 }} value={normalizeForInput(h.end_time)} onChange={e => updateRow(idx, { end_time: e.target.value })} />
+            <TimeSelect value={h.end_time} onChange={v => updateRow(idx, { end_time: v })} />
             <input className="input grow" style={{ minWidth: 120 }} placeholder="備註（spec_rec，可空）" value={h.spec_rec || ""} onChange={e => updateRow(idx, { spec_rec: e.target.value || null })} />
             <button type="button" className="btn btn-ghost btn-sm" style={{ color: "#c83b30" }} onClick={() => removeRow(idx)}>✕</button>
             {isCrossDay(h) && <span className="tiny" style={{ color: "var(--brand-deep)" }}>⚠ 跨至隔日 {h.end_time}</span>}
@@ -112,6 +165,11 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
     if (!form.restaurant_name.trim()) return toast("請輸入餐廳名稱", "err");
     const conflicts = detectHourConflicts(form.opentime);
     if (conflicts.size > 0) return toast("營業時間有重疊，請修正", "err");
+    if (!(await confirmDialog({
+      title: editId ? "確定要修改餐廳資料？" : "確定要新增餐廳？",
+      body: editId ? `將儲存「${form.restaurant_name}」的最新內容。` : `將新增「${form.restaurant_name}」。`,
+      ok: editId ? "確認修改" : "確認新增"
+    }))) return;
     setBusy(true);
     try {
       const payload = {
@@ -131,11 +189,21 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const addPhoto = async () => {
     const url = prompt("輸入照片網址 URL");
     if (!url) return;
+    if (!(await confirmDialog({ title: "確定要新增照片？", body: "新增後會出現在這家餐廳的照片列表。", ok: "新增照片" }))) return;
     await api("POST", "/api/admin/photo/upsert", { restaurant_id: editId, url, is_main: photos.length === 0 ? 1 : 0 });
     const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
   };
-  const setMain = async (ph) => { await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: editId, url: ph.url, is_main: 1 }); const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos); };
-  const delPhoto = async (ph) => { await api("POST", "/api/admin/photo/delete", { photo_id: ph.photo_id }); const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos); };
+  const setMain = async (ph) => {
+    if (ph.is_main) return;
+    if (!(await confirmDialog({ title: "確定要修改主圖？", body: "這張照片會成為餐廳列表與詳情頁的主要圖片。", ok: "設為主圖" }))) return;
+    await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: editId, url: ph.url, is_main: 1 });
+    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+  };
+  const delPhoto = async (ph) => {
+    if (!(await confirmDialog({ title: "確定要刪除照片？", body: "刪除後不會影響餐廳資料，但照片會從列表移除。", ok: "刪除照片", danger: true }))) return;
+    await api("POST", "/api/admin/photo/delete", { photo_id: ph.photo_id });
+    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+  };
 
   return <Modal title={editId ? "編輯餐廳" : "新增餐廳"} onClose={onClose} width={620}>
     {loading ? <Loading /> : <div className="col gap16">
