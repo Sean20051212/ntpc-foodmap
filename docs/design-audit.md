@@ -19,7 +19,7 @@
 | DB-6 ✅ | **餐廳照片本機備援**（2026-06-06 完成）| §7 photos：`url` 為外部來源、`local_path` 為本機路徑；`scripts/sync_photos.mjs` cron-style 下載；前端用 `photoSrc(p) = p.local_path || p.url` |
 | DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
-| DB-9 | 在文件中完整說明 `google_place_id` 用途 | §7 |
+| DB-9 ✅ | **完整說明 `google_place_id` 用途**（2026-06-07 完成）| §7.1 |
 | DB-10 | `price_level` 抽出為獨立資料表 | §7 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（已完成 2026-06-06） — 教授質疑 `day` 應獨立成表以支援 i18n / 元資料擴充。新表三欄：`day_id`, `day_name_zh`, `day_name_en`；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉 `DAYS` 常數 | §3-E、§7、backend §4.4 |
 | BE-2 | 「不在新北市」判定改為地址比對 `districts`（搭配 DB-3） | §3-B / §6 |
@@ -202,7 +202,7 @@
 
 兩個 agent 寫程式時用同一套欄位命名（與 schema 對齊）：
 
-- 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`
+- 餐廳：`restaurant_id` (int), `restaurant_name` (string), `description`, `address`, `zipcode`, `latitude`, `longitude`, `price_level` (1-4 or null), `rating_avg` (float 0-5), `rating_count` (int), `google_place_id`（見下方 §7.1 說明）
 - 區：`zipcode` (3 chars), `district_name`, `center_latitude`, `center_longitude`
 - 分類：`tag_id` (int), `tag_name`
 - 照片：`photo_id`, `restaurant_id`, `url`（外部來源）, `local_path`（本機路徑，可為 NULL）, `is_main` (0/1)
@@ -214,6 +214,26 @@
 - 使用者：`user_id`, `username`, `password_hash`, `is_admin` (0/1), `created_at`, `updated_at`
 
 **API 回傳一律使用上述欄位名稱**，前端 render 時直接對應。
+
+### 7.1 `google_place_id` 用途與存在必要性
+
+`restaurants.google_place_id VARCHAR(100) NULL UNIQUE` — Google Places 對每家店的全球唯一識別字串（例如 `ChIJN1t_tDeuEmsRUsoyG83frY4`），由 Places API 回傳。
+
+**目前實際用途：**
+
+1. **Google Maps 深層連結**（[js/ui.jsx:17](js/ui.jsx#L17) `googleMapsUrl()`）：詳情頁「在 Google Maps 開啟」按鈕用 `https://www.google.com/maps/place/?q=place_id:XXX` 直接跳到該店面，避免靠店名 / 地址搜尋造成的同名歧義（例：「麥當勞 板橋店」可能命中多筆）。沒 place_id 時 fallback 用店名 + 地址做關鍵字搜尋。
+2. **資料補強腳本的斷點續跑** ([scripts/enrich_google.mjs:164](scripts/enrich_google.mjs#L164))：批次跑 Places API 補 `price_level` / 照片時，用 `WHERE google_place_id IS NULL` 跳過已處理的餐廳，避免重複呼叫 API（省 quota）。
+3. **未來擴充的對應鍵**：若之後想接 Google Reviews / Photos API 取得更新資料，place_id 是 Google 那邊認的唯一鍵；只能透過它查，無法用店名 + 地址查。
+
+**存在必要性分析：**
+
+| 移除後會發生什麼 | 嚴重程度 |
+|---|---|
+| Google Maps 連結要 fallback 用名稱搜尋，可能跳錯店 | 🟡 中度（使用者體驗差，但不會壞掉）|
+| enrich_google 每次跑都要重新搜尋全部 687 家，浪費 API 額度（Text Search 每千次約 $32 USD）| 🔴 高（成本問題）|
+| 未來無法接 Places Details / Reviews / 新照片 API | 🟡 中（影響未來擴充性）|
+
+**結論：必須保留。** 雖然 schema 上看起來只是一個外部 ID 不太「乾淨」，但這個欄位是和 Google 生態系唯一的可信對應鍵，移除會在「Google Maps 連結準確性」與「資料補強成本」兩方面付出代價。UNIQUE 限制確保每家餐廳對應到唯一一個 Google 地點，避免重複匯入。
 
 ---
 
