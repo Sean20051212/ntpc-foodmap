@@ -10,4 +10,7 @@ $filters = restaurantParseFilters(getInput(), [
     'offset' => 0,
 ]);
 
-jsonOk(['restaurant_ids' => restaurantFetchIds($filters)]);
+jsonOk([
+    'restaurant_ids' => restaurantFetchIds($filters),
+    'candidates' => array_slice(restaurantFetchList($filters), 0, 8),
+]);

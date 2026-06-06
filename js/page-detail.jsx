@@ -104,7 +104,7 @@ function PageDetail({ me }) {
     <Gallery photos={d.photos.length ? d.photos : [{ url: null }]} />
     <div className="detail-wrap">
       <button className="btn btn-ghost btn-sm" style={{ marginBottom: 14, paddingLeft: 0 }} onClick={() => history.length > 1 ? history.back() : navigate("#/explore")}>‹ 返回</button>
-      <div className="row between" style={{ alignItems: "flex-start", gap: 16 }}>
+      <div className="detail-head">
         <div className="grow">
           <h1 className="h1 serif">{d.restaurant_name}</h1>
           <div className="row center gap8 wrap" style={{ margin: "10px 0" }}>

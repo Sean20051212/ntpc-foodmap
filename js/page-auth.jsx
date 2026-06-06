@@ -29,16 +29,12 @@ function PageAuth({ onAuth }) {
         <button style={{ flex: 1 }} className={tab === "register" ? "on" : ""} onClick={() => { setTab("register"); setErr(""); }}>註冊</button>
       </div>
       <div className="col gap16">
-        <div className="field"><label className="label">帳號 username</label>
-          <input className={"input" + (err ? " input-err" : "")} value={u} placeholder="3–50 字" onChange={e => setU(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} /></div>
-        <div className="field"><label className="label">密碼 password</label>
-          <input className={"input" + (err ? " input-err" : "")} type="password" value={p} placeholder="至少 8 字" onChange={e => setP(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} />
-          <div className="tiny muted">密碼一律由後端 bcrypt 雜湊，不會以任何形式顯示。</div></div>
+        <div className="field"><label className="label">帳號</label>
+          <input className={"input" + (err ? " input-err" : "")} value={u} onChange={e => setU(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} /></div>
+        <div className="field"><label className="label">密碼</label>
+          <input className={"input" + (err ? " input-err" : "")} type="password" value={p} onChange={e => setP(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} /></div>
         {err && <div className="err-text">{err}</div>}
         <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={submit}>{busy ? "處理中…" : (tab === "login" ? "登入" : "註冊並登入")}</button>
-      </div>
-      <div className="tiny muted" style={{ textAlign: "center", marginTop: 18, lineHeight: 1.7 }}>
-        管理員帳號：<b>admin / admin123</b>
       </div>
     </div>
   </div>;

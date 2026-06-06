@@ -5,7 +5,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 /* ---------- helpers ---------- */
 const priceText = (lv) => lv ? "$".repeat(lv) : "—";
-const photoFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+const photoFallback = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'%3E%3Crect width='640' height='400' fill='%23FAF6F1'/%3E%3Crect y='246' width='640' height='154' fill='%23FCEBE2'/%3E%3Ccircle cx='128' cy='96' r='48' fill='%23F4EEE7'/%3E%3Ccircle cx='526' cy='92' r='60' fill='%23F7DDD0'/%3E%3Cg transform='translate(220 72)' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M48 132c0 54 28 84 64 84s64-30 64-84H48z' fill='%23fff' stroke='%23B23C18' stroke-width='8'/%3E%3Cpath d='M66 134h92' stroke='%23E1542A' stroke-width='10'/%3E%3Cpath d='M76 104c-16-18-12-38 4-56M112 100c-14-18-10-40 8-58M148 104c-14-16-12-36 2-50' stroke='%236E635A' stroke-width='8'/%3E%3C/g%3E%3Ctext x='320' y='342' text-anchor='middle' font-family='Noto Sans TC, Microsoft JhengHei, sans-serif' font-size='24' font-weight='700' fill='%23B23C18'%3E新北美食地圖%3C/text%3E%3C/svg%3E";
 function fmtDate(s) { return (s || "").slice(0, 10); }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 function reviewAnchorId(userId) { return "review-" + userId; }
@@ -95,8 +95,9 @@ function Avatar({ name = "?", size = 36, onClick, style }) {
 }
 function Photo({ url, alt, className, style }) {
   const [err, setErr] = useState(false);
+  const src = String(url || "").trim();
   return <div className={"ph-img " + (className || "")} style={style}>
-    {url && !err && <img src={url} alt={alt || ""} loading="lazy" onError={() => setErr(true)} />}
+    <img src={!err && src ? src : photoFallback} alt={alt || ""} loading="lazy" onError={() => setErr(true)} />
   </div>;
 }
 function Loading({ pad }) { return <div className="loading" style={pad ? { padding: pad } : null}><div className="spinner" /></div>; }
@@ -166,7 +167,7 @@ function RestaurantCard({ r, variant = "grid", onFav, me }) {
 }
 
 /* ---------- SearchBar ---------- */
-function SearchBar({ initial = "", autoFocus }) {
+function SearchBar({ initial = "", autoFocus, onKeywordClear }) {
   const [mode, setMode] = useState("keyword");
   const [val, setVal] = useState(initial);
   const [open, setOpen] = useState(false);
@@ -174,9 +175,19 @@ function SearchBar({ initial = "", autoFocus }) {
   const boxRef = useRef();
   const hist = useMemo(() => Store.searchHistory().slice(0, 5), [open]);
 
+  useEffect(() => { setVal(initial); }, [initial]);
   useEffect(() => { const f = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
 
-  const submitKeyword = (v) => { const q = (v ?? val).trim(); if (!q) return; Store.pushSearch("keyword", q); setOpen(false); navigate("#/explore?keyword=" + encodeURIComponent(q)); };
+  const submitKeyword = (v) => {
+    const q = (v ?? val).trim();
+    if (!q) {
+      setOpen(false);
+      if (onKeywordClear) onKeywordClear();
+      else if (parseRoute().path === "/explore") navigate("#/explore");
+      return;
+    }
+    Store.pushSearch("keyword", q); setOpen(false); navigate("#/explore?keyword=" + encodeURIComponent(q));
+  };
   const submitAddress = async () => {
     const addr = val.trim(); if (!addr) return;
     setBusy(true);
@@ -195,7 +206,7 @@ function SearchBar({ initial = "", autoFocus }) {
         <button className={mode === "address" ? "on" : ""} onClick={() => setMode("address")}>地址</button>
       </div>
       <input className="search-input" autoFocus={autoFocus} value={val} placeholder={mode === "keyword" ? "搜尋餐廳、料理…" : "輸入地址，找附近餐廳"}
-        onChange={e => { setVal(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+        onChange={e => { const next = e.target.value; setVal(next); setOpen(true); if (mode === "keyword" && !next.trim() && onKeywordClear) onKeywordClear(); }} onFocus={() => setOpen(true)}
         onKeyDown={e => { if (e.key === "Enter") { mode === "keyword" ? submitKeyword() : submitAddress(); } }} />
       <button className="btn btn-primary btn-sm" style={{ borderRadius: 999, minWidth: 44 }} disabled={busy} onClick={() => mode === "keyword" ? submitKeyword() : submitAddress()}>{busy ? "…" : "🔍"}</button>
     </div>
@@ -217,7 +228,7 @@ function Navbar({ me, onAuth }) {
   return <header className={"nav" + (route.path === "/explore" ? " nav-explore" : "")}>
     <div className="nav-inner">
       <div className="brand nav-brand" onClick={() => navigate("#/")}><span className="brand-mark">🍜</span><span>新北美食地圖</span></div>
-      <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>
+      {route.path !== "/explore" && <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>}
       <div className="nav-avatar" ref={ref} style={{ position: "relative" }}>
         {me ? <Avatar name={me.username} onClick={() => setMenu(m => !m)} /> :
           <button className="btn btn-primary btn-sm" onClick={() => navigate("#/login")}>登入</button>}
