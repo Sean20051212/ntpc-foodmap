@@ -15,7 +15,7 @@
 | DB-2 ✅ | **`opentime` 跨日判斷**（已完成 2026-06-06） — `lib/restaurants.php` `restaurantOpenNowSql()` 補上「昨天列、`start>end`、`CURTIME<=end`」第三分支，解決週一存 22:00-02:00、週二凌晨查詢誤判打烊的 bug | §3-E「是否營業中」 |
 | DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
 | DB-4 | `restaurant_photos` 移除 `sort_order` | §7 photos |
-| DB-5 | 拿掉 `main_marker` generated column，將 `is_main` 改為 BOOLEAN + DB 限制「每店至多一筆 true」 | §3-D / §7 photos |
+| DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
 | DB-6 | 餐廳照片改存本機伺服器（不再用外部 URL） | §6 / §7 |
 | DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |

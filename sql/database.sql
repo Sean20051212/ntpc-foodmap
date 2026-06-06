@@ -198,12 +198,39 @@ CREATE TABLE `restaurant_photos` (
   `url` varchar(500) NOT NULL COMMENT '絕對網址',
   `is_main` tinyint(1) NOT NULL DEFAULT 0,
   `sort_order` int(11) NOT NULL DEFAULT 0,
-  `main_marker` int(11) GENERATED ALWAYS AS (if(`is_main` = 1,`restaurant_id`,NULL)) VIRTUAL,
   PRIMARY KEY (`photo_id`),
-  UNIQUE KEY `uk_one_main_per_restaurant` (`main_marker`),
   KEY `idx_photos_restaurant` (`restaurant_id`),
-  CONSTRAINT `fk_photos_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_photos_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `chk_is_main` CHECK (`is_main` in (0,1))
 ) ENGINE=InnoDB AUTO_INCREMENT=4022 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 「每店至多一張主圖」改用 trigger 強制（取代原 main_marker generated column + UNIQUE 技巧）
+DELIMITER $$
+CREATE TRIGGER `trg_photos_one_main_ins`
+BEFORE INSERT ON `restaurant_photos`
+FOR EACH ROW
+BEGIN
+  IF NEW.is_main = 1 AND EXISTS (
+    SELECT 1 FROM `restaurant_photos`
+    WHERE `restaurant_id` = NEW.restaurant_id AND `is_main` = 1
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'restaurant already has a main photo';
+  END IF;
+END$$
+CREATE TRIGGER `trg_photos_one_main_upd`
+BEFORE UPDATE ON `restaurant_photos`
+FOR EACH ROW
+BEGIN
+  IF NEW.is_main = 1 AND EXISTS (
+    SELECT 1 FROM `restaurant_photos`
+    WHERE `restaurant_id` = NEW.restaurant_id
+      AND `is_main` = 1
+      AND `photo_id` <> NEW.photo_id
+  ) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'restaurant already has a main photo';
+  END IF;
+END$$
+DELIMITER ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
