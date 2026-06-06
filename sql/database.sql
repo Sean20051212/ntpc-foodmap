@@ -140,6 +140,7 @@ CREATE TABLE `opentime` (
   `end_time` time NOT NULL,
   `spec_rec` varchar(255) DEFAULT NULL COMMENT '顯示用文字（特殊備註）',
   PRIMARY KEY (`opentime_id`),
+  UNIQUE KEY `uk_opentime_exact` (`restaurant_id`,`day`,`start_time`,`end_time`,`spec_rec`),
   KEY `idx_opentime_restaurant` (`restaurant_id`),
   KEY `fk_opentime_day` (`day`),
   CONSTRAINT `fk_opentime_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE,

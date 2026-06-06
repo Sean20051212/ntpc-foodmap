@@ -192,7 +192,53 @@ function adminRestaurantHours(array $input): array
         ];
     }
 
+    adminAssertHoursNoOverlap($hours);
+
     return $hours;
+}
+
+function adminAssertHoursNoOverlap(array $hours): void
+{
+    $segments = [];
+    foreach ($hours as $idx => $h) {
+        if ($h['spec_rec'] !== null) {
+            continue;
+        }
+        [$sh, $sm] = explode(':', $h['start_time']);
+        [$eh, $em] = explode(':', $h['end_time']);
+        $startMin = $h['day'] * 1440 + (int) $sh * 60 + (int) $sm;
+        $endMin   = $h['day'] * 1440 + (int) $eh * 60 + (int) $em;
+
+        if ($startMin === $endMin) {
+            jsonErr('invalid_input', "opentime[{$idx}] start_time 與 end_time 相同");
+        }
+
+        if ($endMin > $startMin) {
+            $segments[] = ['idx' => $idx, 's' => $startMin, 'e' => $endMin];
+        } else {
+            $segments[] = ['idx' => $idx, 's' => $startMin, 'e' => ($h['day'] + 1) * 1440];
+            $tailStart = (($h['day'] + 1) * 1440) % 10080;
+            $tailEnd   = $tailStart + (int) $eh * 60 + (int) $em;
+            $segments[] = ['idx' => $idx, 's' => $tailStart, 'e' => $tailEnd];
+        }
+    }
+
+    $n = count($segments);
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            $a = $segments[$i];
+            $b = $segments[$j];
+            if ($a['idx'] === $b['idx']) {
+                continue;
+            }
+            if (max($a['s'], $b['s']) < min($a['e'], $b['e'])) {
+                jsonErr(
+                    'opentime_overlap',
+                    sprintf('opentime[%d] 與 opentime[%d] 時段重疊', $a['idx'], $b['idx'])
+                );
+            }
+        }
+    }
 }
 
 function adminReplaceRestaurantChildren(int $restaurantId, array $phones, array $tags, array $hours): void

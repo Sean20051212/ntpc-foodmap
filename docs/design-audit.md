@@ -207,7 +207,7 @@
 - 分類：`tag_id` (int), `tag_name`
 - 照片：`photo_id`, `restaurant_id`, `url`, `is_main` (0/1), `sort_order`
 - 電話：`phone_id`, `restaurant_id`, `phone_number`
-- 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`
+- 營業：`opentime_id`, `restaurant_id`, `day` (0=日 ~ 6=六，FK → `days_of_week.day_id`), `start_time`, `end_time`, `spec_rec`；UNIQUE `(restaurant_id, day, start_time, end_time, spec_rec)` 擋完全重複列；時段重疊由後端 `adminAssertHoursNoOverlap` 在寫入時檢查
 - 星期查找表：`day_id` (0~6), `day_name_zh` (週日/週一/...), `day_name_en` (Sunday/Monday/...)
 - 評論：`user_id`, `restaurant_id`, `rating` (1-5), `comment`, `created_at`, `updated_at`
 - 收藏：`user_id`, `restaurant_id`, `created_at`
