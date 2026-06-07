@@ -8,9 +8,14 @@ requireMethod('POST');
 $input = getInput();
 $lat = isset($input['lat']) && is_numeric($input['lat']) ? (float) $input['lat'] : null;
 $lng = isset($input['lng']) && is_numeric($input['lng']) ? (float) $input['lng'] : null;
+$address = isset($input['address']) && is_string($input['address']) ? trim($input['address']) : '';
+
+if ($address !== '') {
+    jsonOk(geoLocateAddress($address));
+}
 
 if ($lat === null || $lng === null) {
     jsonErr('invalid_input', '缺少或無效的 lat/lng');
 }
 
-jsonOk(geoLocateCoordinates($lat, $lng));
+jsonOk(geoLocateCoordinates($lat, $lng, $address));

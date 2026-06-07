@@ -1,4 +1,4 @@
-/* Auth — 登入 / 註冊（強制登入才能用站） */
+﻿/* Auth — 登入 / 註冊（強制登入才能用站） */
 function PageAuth({ onAuth }) {
   const [tab, setTab] = useState("login");
   const [u, setU] = useState(""); const [p, setP] = useState("");
@@ -38,7 +38,7 @@ function PageAuth({ onAuth }) {
         <button className="btn btn-primary btn-lg btn-block" disabled={busy} onClick={submit}>{busy ? "處理中…" : (tab === "login" ? "登入" : "註冊並登入")}</button>
       </div>
       <div className="tiny muted" style={{ textAlign: "center", marginTop: 18, lineHeight: 1.7 }}>
-        管理員帳號：<b>admin / admin123</b>
+        試用帳號：<b>alice / alice1234</b>（一般）<br />管理員：<b>admin / admin123</b>
       </div>
     </div>
   </div>;

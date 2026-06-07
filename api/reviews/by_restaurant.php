@@ -48,4 +48,3 @@ $reviews = array_map(static function (array $row): array {
 }, $stmt->fetchAll());
 
 jsonOk(['total' => $total, 'reviews' => $reviews]);
-

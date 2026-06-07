@@ -1,4 +1,4 @@
-# 前端實作計畫（給 Claude Design / 前端 agent）
+﻿# 前端實作計畫（給 Claude Design / 前端 agent）
 
 > 動工前必讀：[design-audit.md](design-audit.md)（決策依據）
 > 配對的後端規格：[backend-plan.md](backend-plan.md)。API 路徑 / 欄位 / 型別以**該檔為準**。

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/geo.php';
 
 function restaurantArrayInput(array $input, string $key): array
 {
@@ -88,6 +89,7 @@ function restaurantParseFilters(array $input, array $overrides = []): array
         'max_distance_m' => $maxDistance,
         'user_lat' => $lat,
         'user_lng' => $lng,
+        'user_address' => optionalString($input, 'user_address', 255, ''),
         'bbox' => $bbox,
         'keyword' => optionalString($input, 'keyword', 100, ''),
         'limit' => requireLimit($input, 50, 200),
@@ -95,7 +97,21 @@ function restaurantParseFilters(array $input, array $overrides = []): array
         'sort' => $sort,
     ];
 
-    return array_merge($filters, $overrides);
+    $filters = array_merge($filters, $overrides);
+
+    if ($filters['max_distance_m'] !== null && !$filters['districts'] && $filters['user_lat'] !== null) {
+        $located = $filters['user_address'] !== ''
+            ? geoLocateAddress($filters['user_address'])
+            : geoLocateCoordinates((float) $filters['user_lat'], (float) $filters['user_lng']);
+        if (!empty($located['in_ntpc']) && !empty($located['district']['zipcode'])) {
+            $filters['districts'] = array_values(array_unique(array_merge(
+                [$located['district']['zipcode']],
+                array_map(static fn(array $district): string => (string) $district['zipcode'], $located['adjacent'] ?? [])
+            )));
+        }
+    }
+
+    return $filters;
 }
 
 function restaurantAddParam(array &$params, string $name, $value, int $type = PDO::PARAM_STR): void

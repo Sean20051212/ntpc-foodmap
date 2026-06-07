@@ -13,6 +13,7 @@ if ($lat === null || $lng === null || $lat < -90 || $lat > 90 || $lng < -180 || 
 }
 
 $limit = requireLimit($input, 20, 100);
+$districts = geoNearestDistrictCluster($lat, $lng);
 $filters = restaurantParseFilters([
     'user_lat' => (string) $lat,
     'user_lng' => (string) $lng,
@@ -20,7 +21,7 @@ $filters = restaurantParseFilters([
     'offset' => '0',
     'sort' => 'distance_asc',
 ], [
-    'districts' => [],
+    'districts' => $districts,
     'tags' => [],
     'keyword' => '',
     'bbox' => null,

@@ -176,15 +176,21 @@ function SearchBar({ initial = "", autoFocus }) {
 
   useEffect(() => { const f = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
 
-  const submitKeyword = (v) => { const q = (v ?? val).trim(); if (!q) return; Store.pushSearch("keyword", q); setOpen(false); navigate("#/explore?keyword=" + encodeURIComponent(q)); };
-  const submitAddress = async () => {
-    const addr = val.trim(); if (!addr) return;
+  const submitKeyword = (v) => {
+    const q = (v ?? val).trim();
+    if (!q) return;
+    Store.pushSearch("keyword", q);
+    setOpen(false);
+    navigate("#/explore?keyword=" + encodeURIComponent(q) + "&search_at=" + Date.now());
+  };
+  const submitAddress = async (v) => {
+    const addr = (v ?? val).trim(); if (!addr) return;
     setBusy(true);
     try {
       let geo = Store.getGeocode(addr);
       if (!geo) { const d = await api("POST", "/api/geo/geocode", { address: addr }); geo = { lat: d.lat, lng: d.lng }; Store.setGeocode(addr, d.lat, d.lng); }
       Store.pushSearch("address", addr); setOpen(false);
-      navigate(`#/explore?user_lat=${geo.lat.toFixed(5)}&user_lng=${geo.lng.toFixed(5)}&addr=${encodeURIComponent(addr)}`);
+      navigate(`#/explore?user_lat=${geo.lat.toFixed(5)}&user_lng=${geo.lng.toFixed(5)}&addr=${encodeURIComponent(addr)}&search_at=${Date.now()}`);
     } catch (e) { toast(e.message || "找不到地址", "err"); } finally { setBusy(false); }
   };
 
@@ -200,7 +206,7 @@ function SearchBar({ initial = "", autoFocus }) {
       <button className="btn btn-primary btn-sm" style={{ borderRadius: 999, minWidth: 44 }} disabled={busy} onClick={() => mode === "keyword" ? submitKeyword() : submitAddress()}>{busy ? "…" : "🔍"}</button>
     </div>
     {open && hist.length > 0 && <div className="ac-pop">
-      {hist.map((h, i) => <div key={i} className="ac-item" onClick={() => { setVal(h.value); h.type === "keyword" ? submitKeyword(h.value) : (setMode("address")); }}>
+      {hist.map((h, i) => <div key={i} className="ac-item" onClick={() => { setVal(h.value); h.type === "keyword" ? submitKeyword(h.value) : (setMode("address"), submitAddress(h.value)); }}>
         <span className="muted">{h.type === "keyword" ? "🔍" : "📍"}</span><span className="grow ellip">{h.value}</span><span className="tiny muted">最近</span>
       </div>)}
     </div>}
@@ -211,10 +217,9 @@ function SearchBar({ initial = "", autoFocus }) {
 function Navbar({ me, onAuth }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef();
-  const route = useRoute();
   useEffect(() => { const f = e => { if (ref.current && !ref.current.contains(e.target)) setMenu(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
   const logout = async () => { setMenu(false); try { await api("POST", "/api/auth/logout"); } catch (e) {} onAuth(); toast("已登出"); navigate("#/login"); };
-  return <header className={"nav" + (route.path === "/explore" ? " nav-explore" : "")}>
+  return <header className="nav">
     <div className="nav-inner">
       <div className="brand nav-brand" onClick={() => navigate("#/")}><span className="brand-mark">🍜</span><span>新北美食地圖</span></div>
       <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>

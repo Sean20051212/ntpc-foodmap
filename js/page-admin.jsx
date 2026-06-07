@@ -115,16 +115,24 @@ function AdminReviewsModal({ restaurant, onClose, onChanged }) {
 
 function AdminRestaurants({ dicts }) {
   const [rows, setRows] = useState(null);
+  const [total, setTotal] = useState(null);
+  const [error, setError] = useState(null);
   const [edit, setEdit] = useState(null); // {id} or {id:null} for new
   const [reviewTarget, setReviewTarget] = useState(null);
-  const load = () => api("GET", "/api/restaurants/list", { limit: 1000, sort: "name_asc" }).then(r => setRows(r.restaurants));
+  const load = () => {
+    setError(null);
+    return api("GET", "/api/restaurants/list", { limit: 200, sort: "name_asc" })
+      .then(r => { setRows(r.restaurants); setTotal(r.total); })
+      .catch(e => { setRows([]); setTotal(0); setError(e); toast(e.message, "err"); });
+  };
   useEffect(() => { load(); }, []);
   const del = async (r) => { if (!(await confirmDialog({ title: "刪除整筆餐廳？", body: `這會刪除「${r.restaurant_name}」整筆餐廳資料，包含評論與收藏。若只想刪評論，請用「評論」按鈕。`, ok: "刪餐廳", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("餐廳已刪除"); load(); };
   return <div>
     <div className="row between center" style={{ marginBottom: 14 }}>
-      <div className="ink2 small">{rows ? rows.length : "…"} 家餐廳</div>
+      <div className="ink2 small">{rows ? `${rows.length}${total && total !== rows.length ? ` / ${total}` : ""}` : "…"} 家餐廳</div>
       <button className="btn btn-primary btn-sm" onClick={() => setEdit({ id: null })}>＋ 新增餐廳</button>
     </div>
+    {error && <div className="card" style={{ padding: 14, marginBottom: 14, color: "#c83b30" }}>{error.message}</div>}
     {!rows ? <Loading /> : <table className="dtable">
       <thead><tr><th>餐廳名稱</th><th className="hide-m">區域</th><th>評分</th><th style={{ textAlign: "right" }}>操作</th></tr></thead>
       <tbody>{rows.map(r => <tr key={r.restaurant_id} className="row-hover">
