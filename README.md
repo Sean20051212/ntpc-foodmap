@@ -179,7 +179,7 @@ ntpc-foodmap/
 |---|---|---|
 | DB-1 ✅ | `day` 抽出獨立表（2026-06-06 完成，同 DB-11）| 即 opentime.day 抽出 `days_of_week`，詳見 DB-11 |
 | DB-2 ✅ | `opentime` 跨日（2026-06-06 完成）| `lib/restaurants.php` `restaurantOpenNowSql()` 加上第三分支：當「昨天」那列 `start>end` 且 `CURTIME<=end` 時也算營業中，解決週一存 22:00-02:00、週二凌晨查詢被誤判打烊 |
-| DB-3 | `districts` 移除經緯度 | 移除 `center_latitude/center_longitude`；改由後端比對 `address` 是否存在於 `districts` 表來判斷是否位於新北市範圍內 |
+| DB-3 ✅ | `districts` 移除經緯度（2026-06-07 完成）| 拿掉 `center_latitude/center_longitude` 兩欄；前端 focusDistrict 需要的中心座標改由 `/api/dicts/districts` 端點動態 `AVG(restaurants.lat/lng)` 算出，response shape 不變 |
 | DB-4 ✅ | `restaurant_photos` 移除排序欄位（2026-06-06 完成）| 拿掉 `sort_order` 欄；照片排序改用 `ORDER BY is_main DESC, photo_id ASC`（主圖優先、其餘依新增順序），不再需要維護序列號避免空缺 |
 | DB-5 ✅ | 主要標記改布林（2026-06-06 完成）| 移除 `main_marker` generated column 與其上的 UNIQUE；`is_main` 改為 `BOOLEAN`（MariaDB 為 TINYINT(1) 同義）並加 `CHECK (is_main IN (0,1))`；「每店至多一張主圖」改由 `trg_photos_one_main_ins` / `trg_photos_one_main_upd` 兩個 BEFORE trigger 強制 |
 | DB-6 ✅ | 圖片本機儲存（2026-06-06 完成）| `restaurant_photos` 加 `local_path` 欄：`url` 仍為必填外部來源，`local_path` 由 `scripts/sync_photos.mjs` 下載填入；後端 render 優先 `COALESCE(local_path, url)`、前端用 `photoSrc(p)` helper；admin 編輯 URL 時自動清空 `local_path` 觸發重抓；`uploads/` 已加進 .gitignore |
@@ -195,8 +195,8 @@ ntpc-foodmap/
 
 | # | 項目 | 說明 |
 |---|---|---|
-| BE-1 | 搜尋條件自動重置 | 每次重新輸入 keyword / 地址，或按下搜尋後，自動清除先前的篩選條件（前後端協調） |
-| BE-2 | 新北市判斷邏輯改寫 | `/api/geo/locate` 從「距離 > 15km 視為非新北」改為依 `address` 比對 `districts` 表進行判斷（搭配 DB-3） |
+| BE-1 ✅ | 搜尋條件自動重置（2026-06-07 完成）| 新 keyword / 地址觸發 explore 頁清空 districts / tags / minRating / maxDist / bbox；地址變動時並重新呼叫 `/api/geo/locate`；reload 依賴加入 `locInfo.in_ntpc` 避免 stale state；不在新北時 count 改用 list 長度（解決「count=0 但顯示 20 張」）|
+| BE-2 ✅ | 新北市判斷邏輯改寫（2026-06-07 完成）| `/api/geo/locate` 改用 reverse geocode 拿地址後字串比對 `districts.district_name`；`lib/geocode.php` 新增 `reverseGeocode()`（含 cache）；徹底取代「距離 > 15km」距離判斷 |
 | BE-3 | 預設位置改 GPS | 拿掉寫死的板橋座標，改為自動取得使用者 GPS 位置 |
 | BE-4 | 距離搜尋優化 | 執行 Haversine 前，先以行政區（zipcode + 鄰接區）過濾候選餐廳，再算距離 |
 

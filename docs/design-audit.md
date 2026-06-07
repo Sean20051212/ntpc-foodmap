@@ -13,7 +13,7 @@
 |---|---|---|
 | DB-1 | `date` 欄位抽出為獨立資料表 | §7 共用資料字典 |
 | DB-2 ✅ | **`opentime` 跨日判斷**（已完成 2026-06-06） — `lib/restaurants.php` `restaurantOpenNowSql()` 補上「昨天列、`start>end`、`CURTIME<=end`」第三分支，解決週一存 22:00-02:00、週二凌晨查詢誤判打烊的 bug | §3-E「是否營業中」 |
-| DB-3 | `districts` 移除 `center_latitude/center_longitude`；改由後端比對 `address` 字串是否落在 `districts` 表中來判斷是否屬新北市 | §3-B「不在新北市的處理」、§6「是否在新北市」、§7 districts |
+| DB-3 ✅ | **`districts` 移除中心座標**（2026-06-07 完成）— 改用地址比對（BE-2）；前端 focusDistrict 中心由 AVG(restaurants) 動態算 | §3-B / §6 / §7 districts |
 | DB-4 ✅ | **`restaurant_photos` 移除 `sort_order`**（2026-06-06 完成）| §7 photos |
 | DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
 | DB-6 ✅ | **餐廳照片本機備援**（2026-06-06 完成）| §7 photos：`url` 為外部來源、`local_path` 為本機路徑；`scripts/sync_photos.mjs` cron-style 下載；前端用 `photoSrc(p) = p.local_path || p.url` |
@@ -22,7 +22,7 @@
 | DB-9 ✅ | **完整說明 `google_place_id` 用途**（2026-06-07 完成）| §7.1 |
 | DB-10 ✅ | **`price_level` 抽出 `price_levels` 查找表**（2026-06-07 完成）— 新表四欄 `price_level_id / symbol / label_zh / label_en`；restaurants.price_level 由 CHECK 改 FK；新增 `/api/dicts/price_levels` | §7 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（已完成 2026-06-06） — 教授質疑 `day` 應獨立成表以支援 i18n / 元資料擴充。新表三欄：`day_id`, `day_name_zh`, `day_name_en`；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉 `DAYS` 常數 | §3-E、§7、backend §4.4 |
-| BE-2 | 「不在新北市」判定改為地址比對 `districts`（搭配 DB-3） | §3-B / §6 |
+| BE-2 ✅ | **「不在新北市」判定改地址比對**（2026-06-07 完成）— `lib/geo.php` reverseGeocode + 字串比對；舊「距離 > 15km」邏輯刪除 | §3-B / §6 |
 
 下列既存決策因上述變動而**作廢或需重新評估**：
 - §3-B「不在新北市的處理」原本用「距離最近的 district 中心 > 15km」→ 改為地址比對。

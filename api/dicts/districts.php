@@ -5,19 +5,25 @@ require_once __DIR__ . '/../../lib/bootstrap.php';
 
 requireMethod('GET');
 
+// DB-3 後 districts 不再存中心座標。center_latitude / center_longitude 由該區餐廳座標 AVG 動態算出。
+// 對 0 餐廳的區回傳 null，前端 focusDistrict 會判 Number.isFinite 跳過。
 $districts = [];
 $stmt = db()->query(
-    'SELECT zipcode, district_name, center_latitude, center_longitude
-     FROM districts
-     ORDER BY zipcode ASC'
+    'SELECT d.zipcode, d.district_name,
+            AVG(r.latitude)  AS center_latitude,
+            AVG(r.longitude) AS center_longitude
+     FROM districts d
+     LEFT JOIN restaurants r ON r.zipcode = d.zipcode
+     GROUP BY d.zipcode, d.district_name
+     ORDER BY d.zipcode ASC'
 );
 
 foreach ($stmt->fetchAll() as $row) {
     $districts[$row['zipcode']] = [
         'zipcode' => $row['zipcode'],
         'district_name' => $row['district_name'],
-        'center_latitude' => (float) $row['center_latitude'],
-        'center_longitude' => (float) $row['center_longitude'],
+        'center_latitude' => $row['center_latitude'] === null ? null : (float) $row['center_latitude'],
+        'center_longitude' => $row['center_longitude'] === null ? null : (float) $row['center_longitude'],
         'adjacent_zipcodes' => [],
     ];
 }
