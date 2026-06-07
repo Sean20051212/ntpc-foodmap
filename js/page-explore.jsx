@@ -287,7 +287,10 @@ function PageExplore({ me }) {
   const params = (extra) => ({
     district: f.districts, tag: f.tags,
     min_rating: f.minRating || undefined, max_distance_m: f.maxDist || undefined,
-    user_lat: loc.lat, user_lng: loc.lng, keyword: f.keyword || undefined,
+    user_lat: loc.lat, user_lng: loc.lng,
+    // BE-4：把使用者所在區帶給後端，當作距離搜尋的候選池前置過濾（無 district filter + 有 max_distance_m 時生效）
+    user_zipcode: locInfo?.district?.zipcode || undefined,
+    keyword: f.keyword || undefined,
     sort: f.sort, bbox: appliedBbox ? appliedBbox.join(",") : undefined, ...extra
   });
 

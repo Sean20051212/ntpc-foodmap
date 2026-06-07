@@ -81,6 +81,11 @@ function restaurantParseFilters(array $input, array $overrides = []): array
         $sort = 'rating_desc';
     }
 
+    $userZipcode = optionalString($input, 'user_zipcode', 3, '');
+    if ($userZipcode !== '' && !preg_match('/^\d{3}$/', $userZipcode)) {
+        $userZipcode = '';
+    }
+
     $filters = [
         'districts' => array_values(array_unique($districts)),
         'tags' => array_values(array_unique($tags)),
@@ -88,6 +93,7 @@ function restaurantParseFilters(array $input, array $overrides = []): array
         'max_distance_m' => $maxDistance,
         'user_lat' => $lat,
         'user_lng' => $lng,
+        'user_zipcode' => $userZipcode === '' ? null : $userZipcode,
         'bbox' => $bbox,
         'keyword' => optionalString($input, 'keyword', 100, ''),
         'limit' => requireLimit($input, 50, 1000),
@@ -141,6 +147,21 @@ function restaurantOpenNowSql(): string
     )";
 }
 
+// BE-4：當使用者用「距離搜尋」(max_distance_m) 且沒手動勾 district 時，
+// 先用使用者所在區 + 鄰接區當候選池，避免對全 NTPC 687 家都跑 Haversine。
+function restaurantCandidateZipcodes(string $userZipcode): array
+{
+    $stmt = db()->prepare(
+        'SELECT CASE WHEN zipcode_a = :z1 THEN zipcode_b ELSE zipcode_a END AS neighbor
+         FROM district_adjacency
+         WHERE zipcode_a = :z2 OR zipcode_b = :z3'
+    );
+    $stmt->execute(['z1' => $userZipcode, 'z2' => $userZipcode, 'z3' => $userZipcode]);
+    $neighbors = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    return array_values(array_unique(array_merge([$userZipcode], $neighbors)));
+}
+
 function restaurantBuildWhere(array $filters, array &$params, string $prefix): string
 {
     $where = [];
@@ -153,6 +174,22 @@ function restaurantBuildWhere(array $filters, array &$params, string $prefix): s
             $holders[] = ':' . $name;
         }
         $where[] = 'r.zipcode IN (' . implode(',', $holders) . ')';
+    } elseif (
+        $filters['max_distance_m'] !== null
+        && $filters['user_zipcode'] !== null
+        && $filters['user_lat'] !== null
+    ) {
+        // 距離搜尋優化：以使用者所在區 + 鄰接區為候選池
+        $candidates = restaurantCandidateZipcodes($filters['user_zipcode']);
+        if ($candidates) {
+            $holders = [];
+            foreach ($candidates as $idx => $zipcode) {
+                $name = "{$prefix}_candidate_{$idx}";
+                restaurantAddParam($params, $name, $zipcode);
+                $holders[] = ':' . $name;
+            }
+            $where[] = 'r.zipcode IN (' . implode(',', $holders) . ')';
+        }
     }
 
     if ($filters['tags']) {
