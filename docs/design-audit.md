@@ -18,7 +18,7 @@
 | DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
 | DB-6 ✅ | **餐廳照片本機備援**（2026-06-06 完成）| §7 photos：`url` 為外部來源、`local_path` 為本機路徑；`scripts/sync_photos.mjs` cron-style 下載；前端用 `photoSrc(p) = p.local_path || p.url` |
 | DB-7 ✅ | **tag 品質審查**（2026-06-07 完成）— 詳見 [docs/tag-audit.md](tag-audit.md)：3 筆誤分類已修，tag_id=2 改名「麵食」| seed 資料 |
-| DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
+| DB-8 ✅ | **ERD 正規化審查**（2026-06-07 完成）— 詳見 [docs/erd-normalization.md](erd-normalization.md)：3NF/BCNF/4NF/5NF 達成，反正規化處皆有理由 | 全檔 |
 | DB-9 ✅ | **完整說明 `google_place_id` 用途**（2026-06-07 完成）| §7.1 |
 | DB-10 ✅ | **`price_level` 抽出 `price_levels` 查找表**（2026-06-07 完成）— 新表四欄 `price_level_id / symbol / label_zh / label_en`；restaurants.price_level 由 CHECK 改 FK；新增 `/api/dicts/price_levels` | §7 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（已完成 2026-06-06） — 教授質疑 `day` 應獨立成表以支援 i18n / 元資料擴充。新表三欄：`day_id`, `day_name_zh`, `day_name_en`；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉 `DAYS` 常數 | §3-E、§7、backend §4.4 |

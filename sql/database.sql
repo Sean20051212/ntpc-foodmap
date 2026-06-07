@@ -29,7 +29,9 @@ CREATE TABLE `days_of_week` (
   `day_id` tinyint(4) NOT NULL,
   `day_name_zh` varchar(10) NOT NULL,
   `day_name_en` varchar(10) NOT NULL,
-  PRIMARY KEY (`day_id`)
+  PRIMARY KEY (`day_id`),
+  UNIQUE KEY `uk_days_name_zh` (`day_name_zh`),
+  UNIQUE KEY `uk_days_name_en` (`day_name_en`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -83,7 +85,8 @@ CREATE TABLE `districts` (
   `district_name` varchar(20) NOT NULL,
   `center_latitude` decimal(10,7) NOT NULL,
   `center_longitude` decimal(10,7) NOT NULL,
-  PRIMARY KEY (`zipcode`)
+  PRIMARY KEY (`zipcode`),
+  UNIQUE KEY `uk_districts_name` (`district_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

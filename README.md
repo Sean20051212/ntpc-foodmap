@@ -184,7 +184,7 @@ ntpc-foodmap/
 | DB-5 ✅ | 主要標記改布林（2026-06-06 完成）| 移除 `main_marker` generated column 與其上的 UNIQUE；`is_main` 改為 `BOOLEAN`（MariaDB 為 TINYINT(1) 同義）並加 `CHECK (is_main IN (0,1))`；「每店至多一張主圖」改由 `trg_photos_one_main_ins` / `trg_photos_one_main_upd` 兩個 BEFORE trigger 強制 |
 | DB-6 ✅ | 圖片本機儲存（2026-06-06 完成）| `restaurant_photos` 加 `local_path` 欄：`url` 仍為必填外部來源，`local_path` 由 `scripts/sync_photos.mjs` 下載填入；後端 render 優先 `COALESCE(local_path, url)`、前端用 `photoSrc(p)` helper；admin 編輯 URL 時自動清空 `local_path` 觸發重抓；`uploads/` 已加進 .gitignore |
 | DB-7 ✅ | 標籤品質審查（2026-06-07 完成）| 詳見 [docs/tag-audit.md](docs/tag-audit.md)：14 個 tag 均有對應餐廳、分佈合理、無過細；pattern + description audit 發現 3 筆誤分類（#462/#579/#658）已修；tag_id=2「麵食（牛肉麵類）」改名「麵食」；catch-all tag（小吃∕熱炒 43%、異國料理）保持現狀，拆分 effort/value 不划算 |
-| DB-8 | ERD 正規化 | 用 AI 確認整體 ERD 符合正規化要求 |
+| DB-8 ✅ | ERD 正規化審查（2026-06-07 完成）| 詳見 [docs/erd-normalization.md](docs/erd-normalization.md)：13 張表 1NF/2NF/3NF/BCNF/4NF/5NF 全達成；rating_avg/rating_count 與 photos.local_path 為刻意反正規化（trigger 維護 / fallback 設計）；順手補上 districts/days_of_week 缺漏的 UNIQUE |
 | DB-9 ✅ | Google Place ID 用途說明（2026-06-07 完成）| 詳見 [docs/design-audit.md §7.1](docs/design-audit.md)：用於 Google Maps 精確深層連結（避免店名歧義）、enrich_google 斷點續跑（省 API 額度）、未來接 Reviews/Photos 擴充的對應鍵；UNIQUE 確保 1 餐廳對 1 Google 地點 |
 | DB-10 ✅ | `price_level` 抽出獨立表（2026-06-07 完成）| 新建 `price_levels(price_level_id, symbol, label_zh, label_en)` 四列；`restaurants.price_level` 由 CHECK 改 FK；新增 `/api/dicts/price_levels` 端點；後端 list/detail JOIN 帶出 `price_level_symbol` / `price_level_label_zh`；後台編輯下拉顯示「$$ 平價」 |
 | DB-11 ✅ | **opentime.day 抽出 `days_of_week` 查找表**（2026-06-06 完成）| 新表三欄 day_id / day_name_zh / day_name_en；opentime.day 改 FK；新增 `/api/dicts/days` 端點；前端拿掉寫死 `DAYS` 常數。回應教授對 opentime.day 正規化的質疑 |
