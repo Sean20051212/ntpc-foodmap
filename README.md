@@ -197,7 +197,7 @@ ntpc-foodmap/
 |---|---|---|
 | BE-1 ✅ | 搜尋條件自動重置（2026-06-07 完成）| 新 keyword / 地址觸發 explore 頁清空 districts / tags / minRating / maxDist / bbox；地址變動時並重新呼叫 `/api/geo/locate`；reload 依賴加入 `locInfo.in_ntpc` 避免 stale state；不在新北時 count 改用 list 長度（解決「count=0 但顯示 20 張」）|
 | BE-2 ✅ | 新北市判斷邏輯改寫（2026-06-07 完成）| `/api/geo/locate` 改用 reverse geocode 拿地址後字串比對 `districts.district_name`；`lib/geocode.php` 新增 `reverseGeocode()`（含 cache）；徹底取代「距離 > 15km」距離判斷 |
-| BE-3 | 預設位置改 GPS | 拿掉寫死的板橋座標，改為自動取得使用者 GPS 位置 |
+| BE-3 ✅ | 預設位置改 GPS（2026-06-07 完成）| 探索頁初始化呼叫 `navigator.geolocation.getCurrentPosition`，6 秒 timeout 或拒絕則 fallback BANCHIAO；URL 帶 user_lat 時優先尊重；不在新北時自動勾選最近 4 個新北區（haversine 距離 vs `/api/dicts/districts` 動態 AVG 中心）；橫幅顯示定位地址；清除按鈕額外清掉 URL 上 user_lat/addr/keyword/tag 觸發重新定位 |
 | BE-4 | 距離搜尋優化 | 執行 Haversine 前，先以行政區（zipcode + 鄰接區）過濾候選餐廳，再算距離 |
 
 ### 前端（D、E）

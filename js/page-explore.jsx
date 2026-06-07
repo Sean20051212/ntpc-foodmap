@@ -216,17 +216,69 @@ function PageExplore({ me }) {
   const ready = useRef(false);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
 
-  // 初始化：dict + locate
+  // BE-3：嘗試取得 GPS 位置（瀏覽器會自動跳權限對話框）；拒絕 / 失敗 / timeout 則用 BANCHIAO fallback。
+  // URL 帶 user_lat（從首頁搜地址跳過來）視為使用者明確指定，優先採用。
+  const resolveFromUrlOrGps = (preferUrl = true) => new Promise(resolve => {
+    if (preferUrl && q.user_lat) { resolve({ lat: +q.user_lat, lng: +q.user_lng }); return; }
+    if (!navigator.geolocation) { resolve(BANCHIAO); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(BANCHIAO),
+      { timeout: 6000, maximumAge: 60000 }
+    );
+  });
+
+  // 球面距離 (km)，用來挑「最接近 loc 的 N 個新北區」
+  const haversineKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  };
+
+  // 對 loc 挑最近的 N 個新北區（用 /api/dicts/districts 帶來的 AVG 中心）
+  const nearestNtpcDistricts = (loc, dictsObj, n = 4) => {
+    if (!dictsObj) return [];
+    return [...dictsObj.districts]
+      .filter(d => Number.isFinite(d.center_latitude) && Number.isFinite(d.center_longitude))
+      .map(d => ({ zipcode: d.zipcode, dist: haversineKm(loc.lat, loc.lng, d.center_latitude, d.center_longitude) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, n)
+      .map(d => d.zipcode);
+  };
+
+  // 套用某座標：呼叫 /api/geo/locate、若無 keyword 則自動勾選對應區（in_ntpc → 該區+鄰接；不在新北 → 最近 N 區）
+  const applyLocation = async (newLoc, dictsObj, hasKeyword) => {
+    setLoc(newLoc);
+    try {
+      const info = await api("POST", "/api/geo/locate", newLoc);
+      setLocInfo(info);
+      if (!hasKeyword) {
+        const districts = info.in_ntpc
+          ? [info.district.zipcode, ...info.adjacent.map(a => a.zipcode)]
+          : nearestNtpcDistricts(newLoc, dictsObj, 4);
+        setF(s => ({ ...s, districts }));
+      }
+      return info;
+    } catch (e) {
+      toast(e.message, "err");
+      return null;
+    }
+  };
+
+  // 初始化：dict + 解析座標 + locate + 自動套區
   useEffect(() => {
     (async () => {
       try {
-        const [d, t] = await Promise.all([api("GET", "/api/dicts/districts"), api("GET", "/api/dicts/tags")]);
-        setDicts({ districts: d.districts, tags: t.tags });
-        const info = await api("POST", "/api/geo/locate", { lat: loc.lat, lng: loc.lng });
-        setLocInfo(info);
-        if (info.in_ntpc && !q.tag && !q.keyword) {
-          setF(s => ({ ...s, districts: [info.district.zipcode, ...info.adjacent.map(a => a.zipcode)] }));
-        }
+        const [d, t, initLoc] = await Promise.all([
+          api("GET", "/api/dicts/districts"),
+          api("GET", "/api/dicts/tags"),
+          resolveFromUrlOrGps(true),
+        ]);
+        const dictsObj = { districts: d.districts, tags: t.tags };
+        setDicts(dictsObj);
+        await applyLocation(initLoc, dictsObj, !!(q.tag || q.keyword));
       } catch (e) { toast(e.message, "err"); }
       ready.current = true; reload();
     })();
@@ -239,8 +291,7 @@ function PageExplore({ me }) {
     sort: f.sort, bbox: appliedBbox ? appliedBbox.join(",") : undefined, ...extra
   });
 
-  // BE-1：從導覽列/首頁帶新 keyword 或地址進來時，除了同步本身值外，
-  // 也清空既有的 district / tag / rating / distance / bbox 篩選，避免舊條件污染新搜尋。
+  // BE-1：新 keyword → 清 filter；keyword 模式不要用地址做篩選（清掉 districts）
   useEffect(() => {
     if (!ready.current) return;
     setF(s => ({ ...s, keyword: q.keyword || "", districts: [], tags: [], minRating: 0, maxDist: 0 }));
@@ -248,36 +299,29 @@ function PageExplore({ me }) {
     setPendBbox(null);
     setShowResq(false);
   }, [q.keyword]);
+
+  // URL user_lat 變動（新地址 / clearAll 清掉地址）→ 重新解析座標 + 重 locate + 重新套區
   useEffect(() => {
-    if (!q.user_lat) return;
-    const nextLoc = { lat: +q.user_lat, lng: +q.user_lng };
-    setLoc(nextLoc);
     if (!ready.current) return;
-    // 清舊 filter 並重新 locate 新座標，否則 locInfo 仍是上一次的位置（會造成「不在新北」誤判 / 漏判）
-    setF(s => ({ ...s, districts: [], tags: [], minRating: 0, maxDist: 0, keyword: "" }));
     setAppliedBbox(null);
     setPendBbox(null);
     setShowResq(false);
-    api("POST", "/api/geo/locate", nextLoc).then(setLocInfo).catch(e => toast(e.message, "err"));
+    (async () => {
+      const newLoc = await resolveFromUrlOrGps(true);
+      setF(s => ({ ...s, tags: [], minRating: 0, maxDist: 0, keyword: q.keyword || "" }));
+      await applyLocation(newLoc, dicts, !!q.keyword);
+    })();
   }, [q.user_lat, q.user_lng]);
 
   const reload = async () => {
     setListLoading(true);
     try {
-      if (locInfo && !locInfo.in_ntpc) {
-        // 不在新北：忽略 keyword/district 等 filter，直接顯示最近 20 家新北餐廳。
-        // count 同步用 list 長度，避免「count=0 但顯示 20 張」的混亂。
-        const data = await api("GET", "/api/restaurants/nearby_ntpc", { lat: loc.lat, lng: loc.lng, limit: 20 });
-        setList(data.restaurants);
-        setCount(data.restaurants.length);
-      } else {
-        const [cnt, data] = await Promise.all([
-          api("GET", "/api/restaurants/count", params()),
-          api("GET", "/api/restaurants/list", params({ limit: 60 })),
-        ]);
-        setCount(cnt.total);
-        setList(data.restaurants);
-      }
+      const [cnt, data] = await Promise.all([
+        api("GET", "/api/restaurants/count", params()),
+        api("GET", "/api/restaurants/list", params({ limit: 60 })),
+      ]);
+      setCount(cnt.total);
+      setList(data.restaurants);
     } catch (e) { toast(e.message, "err"); } finally { setListLoading(false); }
   };
 
@@ -296,12 +340,15 @@ function PageExplore({ me }) {
   const clearKeywordRoute = () => {
     if (route.query.keyword != null) navigate("#/explore");
   };
+  // 清除所有篩選 + URL 上的地址/關鍵字參數 → 觸發 q.user_lat / q.keyword effect 重新解析座標、自動套區
   const clearAll = () => {
     setF({ districts: [], tags: [], minRating: 0, maxDist: 0, sort: f.sort, keyword: "" });
     setAppliedBbox(null);
     setPendBbox(null);
     setShowResq(false);
-    clearKeywordRoute();
+    if (route.query.user_lat != null || route.query.keyword != null || route.query.addr != null || route.query.tag != null) {
+      navigate("#/explore");
+    }
   };
   const removeFilter = (key, value) => {
     if (key === "district") set("districts", f.districts.filter(id => id !== value));
@@ -345,7 +392,15 @@ function PageExplore({ me }) {
       <div className={"exp-filter" + (collapsed ? " collapsed" : "")}><FilterPanel dicts={dicts} f={f} set={set} count={count} onClear={clearAll} onDistrictPick={focusDistrict} /></div>
 
       <div className="exp-list">
-        {locInfo && !locInfo.in_ntpc && <div style={{ margin: 14, padding: "10px 12px", background: "var(--brand-tint)", borderRadius: 12, fontSize: 13, color: "var(--brand-deep)" }}>你目前不在新北市，以下顯示最近的 20 家新北餐廳。</div>}
+        {locInfo && (() => {
+  // 定位地址：URL 帶的 addr 優先（使用者明確輸入），其次 in_ntpc 區名，其次「目前位置」
+  const where = q.addr || (locInfo.in_ntpc && locInfo.district ? `新北市 ${locInfo.district.district_name}` : "目前位置");
+  return <div style={{ margin: 14, padding: "10px 12px", background: "var(--brand-tint)", borderRadius: 12, fontSize: 13, color: "var(--brand-deep)" }}>
+    📍 目前定位：<b>{where}</b>
+    {!locInfo.in_ntpc && <span> · 不在新北市，已自動勾選最近的新北區</span>}
+    {f.keyword && <span> · 關鍵字搜尋中（不套用地址篩選）</span>}
+  </div>;
+})()}
         <div className="explore-sub" style={{ borderTop: "none" }}>
           <div className="small ink2"><b className="ink2" style={{ color: "var(--ink)" }}>{count == null ? "…" : count}</b> 家{locInfo && locInfo.in_ntpc ? " · " + (locInfo.district ? locInfo.district.district_name : "") + " 周邊" : ""}</div>
         </div>
