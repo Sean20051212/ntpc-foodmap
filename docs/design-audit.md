@@ -17,7 +17,7 @@
 | DB-4 ✅ | **`restaurant_photos` 移除 `sort_order`**（2026-06-06 完成）| §7 photos |
 | DB-5 ✅ | **拿掉 `main_marker` generated column，`is_main` 改 BOOLEAN + trigger 限制「每店至多一筆 true」**（2026-06-06 完成）| §3-D / §7 photos |
 | DB-6 ✅ | **餐廳照片本機備援**（2026-06-06 完成）| §7 photos：`url` 為外部來源、`local_path` 為本機路徑；`scripts/sync_photos.mjs` cron-style 下載；前端用 `photoSrc(p) = p.local_path || p.url` |
-| DB-7 | AI 驗證每個 tag 都有對應餐廳、tag 定義不過細 | seed 資料 |
+| DB-7 ✅ | **tag 品質審查**（2026-06-07 完成）— 詳見 [docs/tag-audit.md](tag-audit.md)：3 筆誤分類已修，tag_id=2 改名「麵食」| seed 資料 |
 | DB-8 | AI 確認整體 ERD 符合正規化 | 全檔 |
 | DB-9 ✅ | **完整說明 `google_place_id` 用途**（2026-06-07 完成）| §7.1 |
 | DB-10 ✅ | **`price_level` 抽出 `price_levels` 查找表**（2026-06-07 完成）— 新表四欄 `price_level_id / symbol / label_zh / label_en`；restaurants.price_level 由 CHECK 改 FK；新增 `/api/dicts/price_levels` | §7 |
