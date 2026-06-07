@@ -239,28 +239,56 @@ function PageExplore({ me }) {
     sort: f.sort, bbox: appliedBbox ? appliedBbox.join(",") : undefined, ...extra
   });
 
-  // 從導覽列/首頁帶 keyword 或 地址座標進來時同步
-  useEffect(() => { if (ready.current) setF(s => ({ ...s, keyword: q.keyword || "" })); }, [q.keyword]);
-  useEffect(() => { if (q.user_lat) { setLoc({ lat: +q.user_lat, lng: +q.user_lng }); setAppliedBbox(null); } }, [q.user_lat, q.user_lng]);
+  // BE-1：從導覽列/首頁帶新 keyword 或地址進來時，除了同步本身值外，
+  // 也清空既有的 district / tag / rating / distance / bbox 篩選，避免舊條件污染新搜尋。
+  useEffect(() => {
+    if (!ready.current) return;
+    setF(s => ({ ...s, keyword: q.keyword || "", districts: [], tags: [], minRating: 0, maxDist: 0 }));
+    setAppliedBbox(null);
+    setPendBbox(null);
+    setShowResq(false);
+  }, [q.keyword]);
+  useEffect(() => {
+    if (!q.user_lat) return;
+    const nextLoc = { lat: +q.user_lat, lng: +q.user_lng };
+    setLoc(nextLoc);
+    if (!ready.current) return;
+    // 清舊 filter 並重新 locate 新座標，否則 locInfo 仍是上一次的位置（會造成「不在新北」誤判 / 漏判）
+    setF(s => ({ ...s, districts: [], tags: [], minRating: 0, maxDist: 0, keyword: "" }));
+    setAppliedBbox(null);
+    setPendBbox(null);
+    setShowResq(false);
+    api("POST", "/api/geo/locate", nextLoc).then(setLocInfo).catch(e => toast(e.message, "err"));
+  }, [q.user_lat, q.user_lng]);
 
   const reload = async () => {
     setListLoading(true);
     try {
-      const cnt = await api("GET", "/api/restaurants/count", params());
-      setCount(cnt.total);
-      let data;
-      if (locInfo && !locInfo.in_ntpc) data = await api("GET", "/api/restaurants/nearby_ntpc", { lat: loc.lat, lng: loc.lng, limit: 20 });
-      else data = await api("GET", "/api/restaurants/list", params({ limit: 60 }));
-      setList(data.restaurants);
+      if (locInfo && !locInfo.in_ntpc) {
+        // 不在新北：忽略 keyword/district 等 filter，直接顯示最近 20 家新北餐廳。
+        // count 同步用 list 長度，避免「count=0 但顯示 20 張」的混亂。
+        const data = await api("GET", "/api/restaurants/nearby_ntpc", { lat: loc.lat, lng: loc.lng, limit: 20 });
+        setList(data.restaurants);
+        setCount(data.restaurants.length);
+      } else {
+        const [cnt, data] = await Promise.all([
+          api("GET", "/api/restaurants/count", params()),
+          api("GET", "/api/restaurants/list", params({ limit: 60 })),
+        ]);
+        setCount(cnt.total);
+        setList(data.restaurants);
+      }
     } catch (e) { toast(e.message, "err"); } finally { setListLoading(false); }
   };
 
   // 條件變動 → debounce 重新查詢（count 即時 + 清單）
+  // 加 locInfo?.in_ntpc：當新地址 reverse-geocode 回來改變 in_ntpc 狀態時也要重 fire，
+  // 否則 reload 會用舊的 locInfo 走 list endpoint 拿到 687 家。
   useEffect(() => {
     if (!ready.current) return;
     const t = setTimeout(reload, 320);
     return () => clearTimeout(t);
-  }, [f.districts, f.tags, f.minRating, f.maxDist, f.sort, f.keyword, appliedBbox, loc.lat, loc.lng]);
+  }, [f.districts, f.tags, f.minRating, f.maxDist, f.sort, f.keyword, appliedBbox, loc.lat, loc.lng, locInfo?.in_ntpc]);
 
   const onFav = (r) => window.favToggle(r, setList);
   const onIdle = (bbox) => { setPendBbox(bbox); setShowResq(true); };
