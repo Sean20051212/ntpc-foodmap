@@ -116,7 +116,14 @@ function WheelDock({ params, onClose }) {
     setPool(Math.max(0, (d.restaurant_ids?.length ?? 0) - (d.candidates?.length ?? 0)));
     setCandidates((d.candidates || []).slice(0, SLICE_COUNT));
   };
-  useEffect(() => { loadPool().catch(() => { setPool(0); setCandidates([]); }); }, []);
+  // 篩選變動 → 重置 wheel 並重新撈候選；用 paramsKey 比對避免 reference 變動造成死循環
+  const paramsKey = JSON.stringify(params);
+  useEffect(() => {
+    setResult(null);
+    setExhausted(false);
+    setRotation(0);
+    loadPool().catch(() => { setPool(0); setCandidates([]); });
+  }, [paramsKey]);
   function truncateLabel(text) {
     return text.length > 6
       ? text.slice(0, 6) + "..."
