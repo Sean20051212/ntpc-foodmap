@@ -11,6 +11,7 @@ function PageAuth({ onAuth }) {
     setBusy(true);
     try {
       await api("POST", tab === "login" ? "/api/auth/login" : "/api/auth/register", { username: u.trim(), password: p });
+      localStorage.removeItem("searchHistory");
       await onAuth(); toast(tab === "login" ? "歡迎回來！" : "註冊成功，已登入", "ok"); navigate("#/");
     } catch (e) {
       setErr(e.code === "conflict" ? "帳號已存在，請換一個" : (e.message || "操作失敗"));

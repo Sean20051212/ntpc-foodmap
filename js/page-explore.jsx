@@ -45,8 +45,8 @@ function FilterPanel({ dicts, f, set, count, onClear, onDistrictPick }) {
   </div>;
 }
 
-function ExploreMap({ restaurants, center, onFav, onIdle }) {
-  const elRef = useRef(), mapRef = useRef(), layerRef = useRef(), favRef = useRef(onFav);
+function ExploreMap({ restaurants, center, centerLabel, onFav, onIdle }) {
+  const elRef = useRef(), mapRef = useRef(), layerRef = useRef(), favRef = useRef(onFav), userMarkerRef = useRef(null);
   favRef.current = onFav;
   const invalidateMap = useCallback(() => {
     const el = elRef.current, map = mapRef.current;
@@ -80,6 +80,19 @@ function ExploreMap({ restaurants, center, onFav, onIdle }) {
     };
   }, [invalidateMap]);
   useEffect(() => { if (mapRef.current) mapRef.current.setView([center.lat, center.lng], mapRef.current.getZoom()); }, [center.lat, center.lng]);
+  // 使用者目前位置旗標：固定一支大頭針標示「你在這」，獨立於餐廳 marker
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    if (userMarkerRef.current) { map.removeLayer(userMarkerRef.current); userMarkerRef.current = null; }
+    const icon = L.divIcon({
+      className: "",
+      iconSize: [38, 46], iconAnchor: [19, 44],
+      html: `<div class="user-pin"><div class="user-pin-dot">📍</div></div>`,
+    });
+    const m = L.marker([center.lat, center.lng], { icon, zIndexOffset: 1000 }).addTo(map);
+    if (centerLabel) m.bindPopup(`<div style="font-weight:700">📍 ${centerLabel}</div>`);
+    userMarkerRef.current = m;
+  }, [center.lat, center.lng, centerLabel]);
   useEffect(() => {
     const lg = layerRef.current; if (!lg) return; lg.clearLayers();
     restaurants.forEach(r => {
@@ -434,7 +447,7 @@ function PageExplore({ me }) {
       </div>
 
       <div className="exp-map">
-        {dicts && <ExploreMap restaurants={list} center={loc} onFav={onFav} onIdle={onIdle} />}
+        {dicts && <ExploreMap restaurants={list} center={loc} centerLabel={q.addr || (locInfo?.in_ntpc ? locInfo.district?.district_name : "目前位置")} onFav={onFav} onIdle={onIdle} />}
         {showResq && <button className="btn btn-primary btn-sm resq-btn" onClick={reSearch}>↻ 搜尋此區域</button>}
         {!appliedBbox && <div className="geo-note">📍 預設位置：{locInfo && locInfo.district ? locInfo.district.district_name : "板橋區"}<br />可用上方地址搜尋變更</div>}
         {wheel && <WheelDock params={params()} onClose={() => setWheel(false)} />}

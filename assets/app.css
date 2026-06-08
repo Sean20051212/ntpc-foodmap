@@ -276,6 +276,8 @@ img{display:block;max-width:100%}
 .map-pin{display:flex;align-items:center;gap:3px;background:var(--surface);border:1.5px solid var(--brand);color:var(--brand-deep);font-weight:800;font-size:12px;padding:3px 8px;border-radius:999px;box-shadow:var(--sh-2);white-space:nowrap;transform:translateY(0);cursor:pointer}
 .map-pin.fav{background:var(--brand);color:#fff;border-color:var(--brand-deep)}
 .map-pin .pin-h{font-size:12px}
+.user-pin{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:38px;height:46px;pointer-events:auto;filter:drop-shadow(0 4px 6px rgba(34,26,20,.35))}
+.user-pin-dot{font-size:38px;line-height:1;color:#1976d2;transform:translateY(2px)}
 
 /* leaflet popup → info window */
 .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:var(--sh-3);padding:0;overflow:hidden}

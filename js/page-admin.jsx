@@ -139,11 +139,13 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(!!editId);
   const [busy, setBusy] = useState(false);
+  // currentId：新增模式下儲存後會被填入，使「照片管理」區塊在新增完立刻可用
+  const [currentId, setCurrentId] = useState(editId);
   const set = (k, v) => setForm(s => ({ ...s, [k]: v }));
 
   useEffect(() => {
     if (!editId) return;
-    api("GET", "/api/restaurants/detail", { id: editId }).then(r => {
+    api("GET", "/api/restaurants/detail", { id: currentId }).then(r => {
       const d = r.restaurant;
       setForm({
         restaurant_name: d.restaurant_name, description: d.description, address: d.address,
@@ -166,46 +168,69 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
     const conflicts = detectHourConflicts(form.opentime);
     if (conflicts.size > 0) return toast("營業時間有重疊，請修正", "err");
     if (!(await confirmDialog({
-      title: editId ? "確定要修改餐廳資料？" : "確定要新增餐廳？",
-      body: editId ? `將儲存「${form.restaurant_name}」的最新內容。` : `將新增「${form.restaurant_name}」。`,
-      ok: editId ? "確認修改" : "確認新增"
+      title: currentId ? "確定要修改餐廳資料？" : "確定要新增餐廳？",
+      body: currentId ? `將儲存「${form.restaurant_name}」的最新內容。` : `將新增「${form.restaurant_name}」。`,
+      ok: currentId ? "確認修改" : "確認新增"
     }))) return;
     setBusy(true);
     try {
       const payload = {
-        restaurant_id: editId, ...form,
+        restaurant_id: currentId, ...form,
         tags: form.tags,
         phones: form.phones.split(/[,，]/).map(s => s.trim()).filter(Boolean),
         opentime: form.opentime
           .filter(h => h.start_time && h.end_time)
           .map(h => ({ day: h.day, start_time: toFullTime(h.start_time), end_time: toFullTime(h.end_time), spec_rec: h.spec_rec || null })),
       };
-      await api("POST", "/api/admin/restaurant/upsert", payload);
-      toast(editId ? "已更新餐廳" : "已新增餐廳", "ok"); onSaved();
+      const r = await api("POST", "/api/admin/restaurant/upsert", payload);
+      if (!currentId) {
+        const newId = r.restaurant?.restaurant_id;
+        // 把新增表單上 _pending 的照片一張張 upsert 上去
+        const pending = photos.filter(p => p._pending);
+        for (const ph of pending) {
+          await api("POST", "/api/admin/photo/upsert", { restaurant_id: newId, url: ph.url, is_main: ph.is_main ? 1 : 0 });
+        }
+        toast("已新增餐廳", "ok"); onSaved();
+      } else {
+        toast("已更新餐廳", "ok"); onSaved();
+      }
     } catch (e) {
       toast(e.code === "opentime_overlap" ? "營業時間有重疊：" + e.message : e.message, "err");
     } finally { setBusy(false); }
   };
+  // 新增模式（沒 currentId）時，照片以 _pending 暫存在 state，儲存餐廳後再批次 upload
   const addPhoto = async () => {
     const url = prompt("輸入照片網址 URL");
     if (!url) return;
     if (!(await confirmDialog({ title: "確定要新增照片？", body: "新增後會出現在這家餐廳的照片列表。", ok: "新增照片" }))) return;
-    await api("POST", "/api/admin/photo/upsert", { restaurant_id: editId, url, is_main: photos.length === 0 ? 1 : 0 });
-    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+    if (!currentId) {
+      setPhotos(prev => [...prev, { _pending: true, _tempId: Date.now() + Math.random(), url, is_main: prev.length === 0 ? 1 : 0 }]);
+      return;
+    }
+    await api("POST", "/api/admin/photo/upsert", { restaurant_id: currentId, url, is_main: photos.length === 0 ? 1 : 0 });
+    const r = await api("GET", "/api/restaurants/detail", { id: currentId }); setPhotos(r.restaurant.photos);
   };
   const setMain = async (ph) => {
     if (ph.is_main) return;
     if (!(await confirmDialog({ title: "確定要修改主圖？", body: "這張照片會成為餐廳列表與詳情頁的主要圖片。", ok: "設為主圖" }))) return;
-    await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: editId, url: ph.url, is_main: 1 });
-    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+    if (ph._pending) {
+      setPhotos(prev => prev.map(p => ({ ...p, is_main: p._tempId === ph._tempId ? 1 : 0 })));
+      return;
+    }
+    await api("POST", "/api/admin/photo/upsert", { photo_id: ph.photo_id, restaurant_id: currentId, url: ph.url, is_main: 1 });
+    const r = await api("GET", "/api/restaurants/detail", { id: currentId }); setPhotos(r.restaurant.photos);
   };
   const delPhoto = async (ph) => {
     if (!(await confirmDialog({ title: "確定要刪除照片？", body: "刪除後不會影響餐廳資料，但照片會從列表移除。", ok: "刪除照片", danger: true }))) return;
+    if (ph._pending) {
+      setPhotos(prev => prev.filter(p => p._tempId !== ph._tempId));
+      return;
+    }
     await api("POST", "/api/admin/photo/delete", { photo_id: ph.photo_id });
-    const r = await api("GET", "/api/restaurants/detail", { id: editId }); setPhotos(r.restaurant.photos);
+    const r = await api("GET", "/api/restaurants/detail", { id: currentId }); setPhotos(r.restaurant.photos);
   };
 
-  return <Modal title={editId ? "編輯餐廳" : "新增餐廳"} onClose={onClose} width={620}>
+  return <Modal title={currentId ? "編輯餐廳" : "新增餐廳"} onClose={onClose} width={620}>
     {loading ? <Loading /> : <div className="col gap16">
       <div className="field"><label className="label">餐廳名稱</label><input className="input" value={form.restaurant_name} onChange={e => set("restaurant_name", e.target.value)} /></div>
       <div className="field"><label className="label">描述</label><textarea className="textarea" value={form.description} onChange={e => set("description", e.target.value)} /></div>
@@ -227,16 +252,16 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
         <OpenTimeEditor hours={form.opentime} onChange={v => set("opentime", v)} />
         <div className="tiny muted" style={{ marginTop: 4 }}>跨午夜：直接填例如 22:00–02:00；備註用於特殊營業（如「過年休」），有備註的列不參與重疊檢查。</div>
       </div>
-      {editId && <div className="field"><label className="label">照片管理</label>
+      <div className="field"><label className="label">照片管理{!currentId && photos.length > 0 ? ` · ${photos.length} 張待上傳` : ""}</label>
         <div className="photo-cell">
-          {photos.map(ph => <div key={ph.photo_id} className={"photo-thumb" + (ph.is_main ? " main" : "")}>
+          {photos.map(ph => <div key={ph.photo_id || ph._tempId} className={"photo-thumb" + (ph.is_main ? " main" : "")}>
             <img src={photoSrc(ph)} alt="" onClick={() => setMain(ph)} title="設為主圖" />
             {ph.is_main ? <span className="pbadge">主圖</span> : null}
             <button className="pdel" onClick={() => delPhoto(ph)}>✕</button>
           </div>)}
           <button className="photo-thumb" style={{ border: "2px dashed var(--line-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 22, background: "var(--surface)", cursor: "pointer" }} onClick={addPhoto}>＋</button>
         </div>
-        <div className="tiny muted" style={{ marginTop: 4 }}>點圖設為主圖，✕ 刪除</div></div>}
+        <div className="tiny muted" style={{ marginTop: 4 }}>點圖設為主圖，✕ 刪除{!currentId ? "；新增餐廳後一起上傳" : ""}</div></div>
       <div className="row gap8" style={{ justifyContent: "flex-end" }}>
         <button className="btn btn-ghost" onClick={onClose}>取消</button>
         <button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? "儲存中…" : "儲存"}</button>
@@ -293,12 +318,26 @@ function AdminRestaurants({ dicts }) {
   const [rows, setRows] = useState(null);
   const [edit, setEdit] = useState(null); // {id} or {id:null} for new
   const [reviewTarget, setReviewTarget] = useState(null);
-  const load = () => api("GET", "/api/restaurants/list", { limit: 1000, sort: "name_asc" }).then(r => setRows(r.restaurants));
-  useEffect(() => { load(); }, []);
+  const [kw, setKw] = useState("");
+  const [tagId, setTagId] = useState(0); // 0 = all
+  const load = () => {
+    const params = { limit: 1000, sort: "name_asc" };
+    if (kw.trim()) params.keyword = kw.trim();
+    if (tagId) params.tag = tagId;
+    return api("GET", "/api/restaurants/list", params).then(r => setRows(r.restaurants));
+  };
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [kw, tagId]);
   const del = async (r) => { if (!(await confirmDialog({ title: "刪除整筆餐廳？", body: `這會刪除「${r.restaurant_name}」整筆餐廳資料，包含評論與收藏。若只想刪評論，請用「評論」按鈕。`, ok: "刪餐廳", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("餐廳已刪除"); load(); };
   return <div>
-    <div className="row between center" style={{ marginBottom: 14 }}>
-      <div className="ink2 small">{rows ? rows.length : "…"} 家餐廳</div>
+    <div className="row between center wrap gap8" style={{ marginBottom: 14 }}>
+      <div className="row gap8 center wrap grow">
+        <input className="input" style={{ width: 220 }} placeholder="🔍 搜尋餐廳名稱 / 描述 / 地址" value={kw} onChange={e => setKw(e.target.value)} />
+        <select className="select" style={{ width: 180 }} value={tagId} onChange={e => setTagId(+e.target.value)}>
+          <option value={0}>全部分類</option>
+          {dicts.tags.map(t => <option key={t.tag_id} value={t.tag_id}>{t.tag_name}</option>)}
+        </select>
+        <div className="ink2 small">{rows ? rows.length : "…"} 家</div>
+      </div>
       <button className="btn btn-primary btn-sm" onClick={() => setEdit({ id: null })}>＋ 新增餐廳</button>
     </div>
     {!rows ? <Loading /> : <table className="dtable">
@@ -314,7 +353,7 @@ function AdminRestaurants({ dicts }) {
         </div></td>
       </tr>)}</tbody>
     </table>}
-    {edit && <RestaurantForm dicts={dicts} editId={edit.id} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />}
+    {edit && <RestaurantForm dicts={dicts} editId={edit.id} onClose={() => { setEdit(null); load(); }} onSaved={() => { setEdit(null); load(); }} />}
     {reviewTarget && <AdminReviewsModal restaurant={reviewTarget} onClose={() => setReviewTarget(null)} onChanged={load} />}
   </div>;
 }

@@ -57,7 +57,7 @@ function PageProfile({ me, onAuth }) {
     if (me && me.user_id === uid) api("GET", "/api/favorites/list").then(r => setFavs(r.restaurants)).catch(() => setFavs([]));
   }, [uid, me]);
 
-  const logout = async () => { if (!(await confirmDialog({ title: "確定要登出？", ok: "登出" }))) return; try { await api("POST", "/api/auth/logout"); } catch (e) {} onAuth(); toast("已登出"); navigate("#/login"); };
+  const logout = async () => { if (!(await confirmDialog({ title: "確定要登出？", ok: "登出" }))) return; try { await api("POST", "/api/auth/logout"); } catch (e) {} localStorage.removeItem("searchHistory"); onAuth(); toast("已登出"); navigate("#/login"); };
   const removeFav = async (r) => { try { await api("POST", "/api/favorites/toggle", { restaurant_id: r.restaurant_id }); setFavs(fs => fs.filter(x => x.restaurant_id !== r.restaurant_id)); toast("已取消收藏"); } catch (e) { toast(e.message, "err"); } };
 
   if (err) return <div className="container section"><Empty icon="👤" title="找不到這位使用者" /></div>;

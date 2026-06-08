@@ -229,7 +229,7 @@ function Navbar({ me, onAuth }) {
   const ref = useRef();
   const route = useRoute();
   useEffect(() => { const f = e => { if (ref.current && !ref.current.contains(e.target)) setMenu(false); }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f); }, []);
-  const logout = async () => { setMenu(false); try { await api("POST", "/api/auth/logout"); } catch (e) {} onAuth(); toast("已登出"); navigate("#/login"); };
+  const logout = async () => { setMenu(false); try { await api("POST", "/api/auth/logout"); } catch (e) {} localStorage.removeItem("searchHistory"); onAuth(); toast("已登出"); navigate("#/login"); };
   return <header className={"nav" + (route.path === "/explore" ? " nav-explore" : "")}>
     <div className="nav-inner">
       <div className="brand nav-brand" onClick={() => navigate("#/")}><span className="brand-mark">🍜</span><span>新北美食地圖</span></div>
