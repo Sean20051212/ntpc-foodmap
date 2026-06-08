@@ -106,13 +106,14 @@ function buildPopup(r, onFav) {
 function WheelDock({ params, onClose }) {
   const SPIN_MS = 2600;
   const SLICE_COUNT = 8;
+  const SLICE_COLORS = ["#F6C0C8", "#F8E5A1", "#C9E4A6", "#A8D8E0", "#B7C8E8", "#C9B6DD", "#D6A8C8", "#F2C8A7"];
   const [pool, setPool] = useState(null), [candidates, setCandidates] = useState([]), [result, setResult] = useState(null), [spinning, setSpinning] = useState(false), [exhausted, setExhausted] = useState(false);
   const [rotation, setRotation] = useState(0);
   const drawnRef = useRef([]);
   const loadPool = async () => {
     drawnRef.current = [];
     const d = await api("GET", "/api/restaurants/wheel_pool", { ...params, count: SLICE_COUNT });
-    setPool(d.restaurant_ids.length);
+    setPool(Math.max(0, (d.restaurant_ids?.length ?? 0) - (d.candidates?.length ?? 0)));
     setCandidates((d.candidates || []).slice(0, SLICE_COUNT));
   };
   useEffect(() => { loadPool().catch(() => { setPool(0); setCandidates([]); }); }, []);
@@ -122,15 +123,26 @@ function WheelDock({ params, onClose }) {
       : text;
   };
 
+  // 候選有 N 家就切 N 格（最少 1 格給單一候選用）。避免「8 格固定但只有 3 個 label」造成的空白困惑。
+  // 分隔線以白色細條夾在色塊邊界（取代 CSS::before 固定 45 度版本）。
+  const sliceCount = Math.max(candidates.length, 1);
+  const sliceAngle = 360 / sliceCount;
+  const DIV = 0.5; // 半條分隔線寬（deg）
+  const wheelBg = candidates.length > 0
+    ? `conic-gradient(from 0deg, ${candidates.map((_, i) => {
+        const start = i * sliceAngle + DIV;
+        const end = (i + 1) * sliceAngle - DIV;
+        const color = SLICE_COLORS[i % SLICE_COLORS.length];
+        return `transparent ${i * sliceAngle}deg ${start}deg, ${color} ${start}deg ${end}deg, transparent ${end}deg ${(i + 1) * sliceAngle}deg`;
+      }).join(", ")}), white`
+    : undefined;
+
   const draw = async () => {
     if (spinning || !candidates.length) return;
     setSpinning(true); setExhausted(false); setResult(null);
     const winIndex = Math.floor(Math.random() * candidates.length);
     const winner = candidates[winIndex];
-    // Wheel-frame slice center for slot i is at angle (i*45 + 22.5) measured clockwise from "up".
-    // Wheel rotates clockwise by R; after rotation, slot i sits at world angle (winCenterDeg + R) mod 360.
-    // Pointer is at world angle 0 (top). We need (winCenterDeg + R) % 360 = 0, i.e. R = -winCenterDeg (mod 360).
-    const winCenterDeg = winIndex * 45 + 22.5;
+    const winCenterDeg = winIndex * sliceAngle + sliceAngle / 2;
     const base = rotation;
     const currentMod = ((base % 360) + 360) % 360;
     const targetMod = ((-winCenterDeg) % 360 + 360) % 360;
@@ -148,7 +160,8 @@ function WheelDock({ params, onClose }) {
         const excludeIds = [...new Set([...visibleIds, ...drawnRef.current])];
         const r = await api("GET", "/api/restaurants/wheel_pool", { ...params, count: 1, exclude: excludeIds.join(",") });
         const replacement = r.candidates && r.candidates[0];
-        setPool((r.restaurant_ids?.length ?? 0));
+        const newPool = Math.max(0, (r.restaurant_ids?.length ?? 0) - (replacement ? 1 : 0));
+        setPool(newPool);
         setCandidates(prev => {
           const copy = prev.slice();
           if (replacement) copy[winIndex] = replacement;
@@ -167,9 +180,9 @@ function WheelDock({ params, onClose }) {
     <div style={{ padding: 18, overflow: "auto", flex: 1 }}>
       <div className="wheel-stage">
         <div className="wheel-ptr">▼</div>
-        <div className={"wheel-spin" + (spinning ? " spinning" : "")} style={{ transform: `rotate(${rotation}deg)` }}>
+        <div className={"wheel-spin" + (spinning ? " spinning" : "")} style={{ transform: `rotate(${rotation}deg)`, ...(wheelBg ? { background: wheelBg } : {}) }}>
           {candidates.length > 0 ? candidates.map((r, i) => {
-            const deg = i * 45 + 22.5;
+            const deg = i * sliceAngle + sliceAngle / 2;
             const label = truncateLabel(String(r.restaurant_name || "候選餐廳").trim());
             return <div className="wheel-label" style={{ transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(calc(-1 * var(--wheel-label-radius)))` }} key={r.restaurant_id || i}>
               <span style={{ transform: `rotate(${-rotation - deg}deg)` }} title={r.restaurant_name}>{label}</span>
@@ -187,7 +200,7 @@ function WheelDock({ params, onClose }) {
             <div className="row center gap6 small ink2"><span className="rating-num">{result.rating_avg.toFixed(1)}</span><Stars value={result.rating_avg} size={12} /><span>· {result.district_name}</span></div>
             {result.distance_m != null && <div className="tiny muted">約 {result.distance_m >= 1000 ? (result.distance_m / 1000).toFixed(1) + "km" : result.distance_m + "m"}</div>}</div>
         </div>
-          : <div className="count-pill" style={{ marginBottom: 14 }}>依目前篩選 <b>{pool == null ? "…" : pool}</b> 家候選</div>}
+          : <div className="count-pill" style={{ marginBottom: 14 }}>依目前篩選 <b>{pool == null ? "…" : (candidates.length + pool)}</b> 家候選</div>}
       {!exhausted && <div className="col gap8">
         {result && <button className="btn btn-outline btn-block" onClick={() => navigate("#/detail?id=" + result.restaurant_id)}>看餐廳詳情</button>}
         <div className="tiny muted" style={{ textAlign: "center", lineHeight: 1.6 }}>抽過的不會再抽到<br /><span onClick={reset} style={{ color: "var(--brand)", cursor: "pointer", fontWeight: 700 }}>重設輪盤</span></div>

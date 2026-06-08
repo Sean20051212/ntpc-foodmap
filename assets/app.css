@@ -296,7 +296,8 @@ img{display:block;max-width:100%}
 @keyframes slideIn{from{transform:translateX(20px);opacity:.4}to{transform:none;opacity:1}}
 .wheel-stage{position:relative;width:var(--wheel-stage-w);height:var(--wheel-stage-h);margin:6px auto 16px;display:flex;align-items:flex-end;justify-content:center}
 .wheel-spin{width:var(--wheel-size);height:var(--wheel-size);border-radius:50%;border:6px solid #fff;position:relative;display:flex;align-items:center;justify-content:center;background:conic-gradient(from 0deg,#F6C0C8 0 45deg,#F8E5A1 45deg 90deg,#C9E4A6 90deg 135deg,#A8D8E0 135deg 180deg,#B7C8E8 180deg 225deg,#C9B6DD 225deg 270deg,#D6A8C8 270deg 315deg,#F2C8A7 315deg 360deg);color:#fff;font-weight:900;font-size:30px;box-shadow:var(--sh-2),0 0 0 1px rgba(0,0,0,.04);transform-origin:center;overflow:hidden}
-.wheel-spin::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 0deg,transparent 0 44.6deg,rgba(255,255,255,.92) 44.6deg 45.4deg);pointer-events:none;z-index:1}
+/* 分隔線改為動態 inline（見 page-explore.jsx wheelBg），原 45deg 固定版本已停用 */
+.wheel-spin::before{display:none}
 .wheel-spin > span{position:relative;z-index:2;color:var(--brand-deep)}
 .wheel-label{position:absolute;top:50%;left:50%;width:var(--wheel-label-w);height:18px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2;transform-origin:center}
 .wheel-label span{display:block;width:var(--wheel-label-w);max-width:var(--wheel-label-w);color:#5a4636;text-align:center;font-size:12px;font-weight:800;line-height:18px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
