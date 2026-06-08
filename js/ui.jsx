@@ -173,7 +173,9 @@ function RestaurantCard({ r, variant = "grid", onFav, me }) {
 
 /* ---------- SearchBar ---------- */
 function SearchBar({ initial = "", autoFocus, onKeywordClear }) {
-  const [mode, setMode] = useState("keyword");
+  // 從 URL 推斷 mode：?addr 或 ?user_lat 在 query 中代表目前是地址搜尋情境
+  const initialRoute = parseRoute().query;
+  const [mode, setMode] = useState(initialRoute.addr || initialRoute.user_lat ? "address" : "keyword");
   const [val, setVal] = useState(initial);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);

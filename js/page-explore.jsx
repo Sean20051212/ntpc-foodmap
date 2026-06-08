@@ -1,7 +1,7 @@
 /* 探索頁 — 搜尋/列表 + 地圖 合併。篩選(可收合)、小卡清單、Leaflet 地圖、輪盤、手機清單/地圖切換 */
 const DIST_OPTS = [{ v: 0, label: "不限" }, { v: 100, label: "100m" }, { v: 300, label: "300m" }, { v: 500, label: "500m" }, { v: 800, label: "800m" }, { v: 1000, label: "1km" }];
 const RATE_OPTS = [{ v: 0, label: "不限" }, { v: 1, label: "1★" }, { v: 2, label: "2★" }, { v: 3, label: "3★" }, { v: 4, label: "4★" }];
-const SORTS = [{ v: "rating_desc", label: "評分最高" }, { v: "distance_asc", label: "距離最近" }, { v: "name_asc", label: "名稱" }];
+const SORTS = [{ v: "rating_desc", label: "評分最高" }, { v: "distance_asc", label: "距離最近" }];
 const BANCHIAO = { lat: 25.0095, lng: 121.4626 };
 
 function Seg2({ options, value, onChange }) {
@@ -412,7 +412,7 @@ function PageExplore({ me }) {
       <select className="select" style={{ width: "auto", padding: "8px 12px" }} value={f.sort} onChange={e => set("sort", e.target.value)}>
         {SORTS.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
       </select>
-      <button className={"btn btn-sm wheel-toggle " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => setWheel(w => !w)}>🎯 輪盤</button>
+      <button className={"btn btn-sm wheel-toggle " + (wheel ? "btn-primary" : "btn-outline")} onClick={() => { setWheel(w => !w); setMtab("map"); }}>🎯 輪盤</button>
       <button className="btn btn-outline btn-sm show-m" onClick={() => setMFilter(true)}>⚙ 篩選{activeCount ? " (" + activeCount + ")" : ""}</button>
     </div>
 
