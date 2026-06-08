@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- 禁止快取 index.html，確保每次拿到最新的 ?v= 版本參數 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>新北美食地圖 — 高保真原型</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,14 +25,14 @@
 <!-- 正式後端：前端只透過 api() 打 /api/*.php；mock-*.js 保留在 js/ 供參考但不再載入 -->
 <script src="js/api.js"></script>
 
-<!-- 前端（React via Babel） -->
-<script type="text/babel" src="js/ui.jsx"></script>
-<script type="text/babel" src="js/page-auth.jsx"></script>
-<script type="text/babel" src="js/page-index.jsx"></script>
-<script type="text/babel" src="js/page-explore.jsx"></script>
-<script type="text/babel" src="js/page-detail.jsx"></script>
-<script type="text/babel" src="js/page-profile.jsx"></script>
-<script type="text/babel" src="js/page-admin.jsx"></script>
-<script type="text/babel" src="js/app.jsx"></script>
+<!-- 前端（React via Babel）— ?v= 改動時手動 bump 強制清掉手機端 cache -->
+<script type="text/babel" src="js/ui.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-auth.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-index.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-explore.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-detail.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-profile.jsx?v=20260607"></script>
+<script type="text/babel" src="js/page-admin.jsx?v=20260607"></script>
+<script type="text/babel" src="js/app.jsx?v=20260607"></script>
 </body>
 </html>

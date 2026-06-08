@@ -14,11 +14,14 @@ function reviewAnchorId(userId) { return "review-" + userId; }
 function detailReviewRoute(restaurantId, userId) { return "#/detail?id=" + restaurantId + "#" + reviewAnchorId(userId); }
 function googleMapsUrl(r) {
   if (!r) return "https://www.google.com/maps";
-  if (r.google_place_id) return "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(r.google_place_id);
-  const q = r.latitude != null && r.longitude != null
-    ? `${r.latitude},${r.longitude}`
-    : [r.restaurant_name, r.address].filter(Boolean).join(" ");
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+  // 用 Maps URL api=1 規格：query 是顯示用關鍵字（店名+地址），
+  // 有 place_id 時加 query_place_id 精確鎖定，雙欄位 web/手機 app 都吃。
+  // 舊版 /maps/place/?q=place_id:XXX 在桌機可用、但行動 deep-link 進 app 會解析不出來。
+  const queryText = [r.restaurant_name, r.address].filter(Boolean).join(" ")
+    || (r.latitude != null && r.longitude != null ? `${r.latitude},${r.longitude}` : "");
+  const params = new URLSearchParams({ api: "1", query: queryText || "新北市" });
+  if (r.google_place_id) params.set("query_place_id", r.google_place_id);
+  return "https://www.google.com/maps/search/?" + params.toString();
 }
 
 /* ---------- router ---------- */
