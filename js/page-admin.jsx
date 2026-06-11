@@ -199,17 +199,22 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
       const r = await api("POST", "/api/admin/restaurant/upsert", payload);
       if (!currentId) {
         const newId = r.restaurant?.restaurant_id;
-        // 把新增表單上 _pending 的照片一張張 upsert 上去
+        setCurrentId(newId); // 立即更新，防止表單未關閉時重複新增
         const pending = photos.filter(p => p._pending);
+        let photoFailed = 0;
         for (const ph of pending) {
-          await api("POST", "/api/admin/photo/upsert", { restaurant_id: newId, url: ph.url, is_main: ph.is_main ? 1 : 0 });
+          try {
+            await api("POST", "/api/admin/photo/upsert", { restaurant_id: newId, url: ph.url, is_main: ph.is_main ? 1 : 0 });
+          } catch (_) { photoFailed++; }
         }
-        toast("已新增餐廳", "ok"); onSaved();
+        if (photoFailed > 0) toast(`餐廳已新增，但 ${photoFailed} 張照片上傳失敗`, "err");
+        else toast("已新增餐廳", "ok");
+        onSaved();
       } else {
         toast("已更新餐廳", "ok"); onSaved();
       }
     } catch (e) {
-      toast(e.code === "opentime_overlap" ? "營業時間有重疊：" + e.message : e.message, "err");
+      toast(e.code === "opentime_overlap" ? "營業時間有重疊：" + e.message : (e.code === "duplicate" ? e.message : e.message), "err");
     } finally { setBusy(false); }
   };
   // 新增模式（沒 currentId）時，照片以 _pending 暫存在 state，儲存餐廳後再批次 upload
@@ -336,22 +341,37 @@ function AdminRestaurants({ dicts }) {
   const [edit, setEdit] = useState(null); // {id} or {id:null} for new
   const [reviewTarget, setReviewTarget] = useState(null);
   const [kw, setKw] = useState("");
-  const [tagId, setTagId] = useState(0); // 0 = all
+  const [tagId, setTagId] = useState(0);
+  const [zipcode, setZipcode] = useState("");
+  const [minRating, setMinRating] = useState(0);
   const load = () => {
     const params = { limit: 1000, sort: "name_asc" };
     if (kw.trim()) params.keyword = kw.trim();
     if (tagId) params.tag = tagId;
+    if (zipcode) params.district = zipcode;
+    if (minRating) params.min_rating = minRating;
     return api("GET", "/api/restaurants/list", params).then(r => setRows(r.restaurants));
   };
-  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [kw, tagId]);
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [kw, tagId, zipcode, minRating]);
   const del = async (r) => { if (!(await confirmDialog({ title: "刪除整筆餐廳？", body: `這會刪除「${r.restaurant_name}」整筆餐廳資料，包含評論與收藏。若只想刪評論，請用「評論」按鈕。`, ok: "刪餐廳", danger: true }))) return; await api("POST", "/api/admin/restaurant/delete", { restaurant_id: r.restaurant_id }); toast("餐廳已刪除"); load(); };
   return <div>
     <div className="row between center wrap gap8" style={{ marginBottom: 14 }}>
       <div className="row gap8 center wrap grow">
         <input className="input" style={{ width: 220 }} placeholder="🔍 搜尋餐廳名稱 / 描述 / 地址" value={kw} onChange={e => setKw(e.target.value)} />
-        <select className="select" style={{ width: 180 }} value={tagId} onChange={e => setTagId(+e.target.value)}>
+        <select className="select" style={{ width: 150 }} value={tagId} onChange={e => setTagId(+e.target.value)}>
           <option value={0}>全部分類</option>
           {dicts.tags.map(t => <option key={t.tag_id} value={t.tag_id}>{t.tag_name}</option>)}
+        </select>
+        <select className="select" style={{ width: 130 }} value={zipcode} onChange={e => setZipcode(e.target.value)}>
+          <option value="">全部區域</option>
+          {dicts.districts.map(d => <option key={d.zipcode} value={d.zipcode}>{d.district_name}</option>)}
+        </select>
+        <select className="select" style={{ width: 110 }} value={minRating} onChange={e => setMinRating(+e.target.value)}>
+          <option value={0}>全部評分</option>
+          <option value={1}>1 ★ 以上</option>
+          <option value={2}>2 ★ 以上</option>
+          <option value={3}>3 ★ 以上</option>
+          <option value={4}>4 ★ 以上</option>
         </select>
         <div className="ink2 small">{rows ? rows.length : "…"} 家</div>
       </div>

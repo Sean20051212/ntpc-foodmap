@@ -41,8 +41,8 @@ try {
 
     if ($photoId === null) {
         $stmt = $pdo->prepare(
-            'INSERT INTO restaurant_photos (restaurant_id, url, is_main)
-             VALUES (?, ?, ?)'
+            'INSERT INTO restaurant_photos (restaurant_id, url, is_main, updated_at)
+             VALUES (?, ?, ?, NOW())'
         );
         $stmt->execute([$restaurantId, $url, $isMain ? 1 : 0]);
         $photoId = (int) $pdo->lastInsertId();
@@ -51,13 +51,13 @@ try {
         if ($existingUrl !== null && $existingUrl !== $url) {
             $stmt = $pdo->prepare(
                 'UPDATE restaurant_photos
-                 SET restaurant_id = ?, url = ?, local_path = NULL, is_main = ?
+                 SET restaurant_id = ?, url = ?, local_path = NULL, is_main = ?, updated_at = NOW()
                  WHERE photo_id = ?'
             );
         } else {
             $stmt = $pdo->prepare(
                 'UPDATE restaurant_photos
-                 SET restaurant_id = ?, url = ?, is_main = ?
+                 SET restaurant_id = ?, url = ?, is_main = ?, updated_at = NOW()
                  WHERE photo_id = ?'
             );
         }
@@ -73,7 +73,7 @@ try {
 }
 
 $photo = db()->prepare(
-    'SELECT photo_id, restaurant_id, url, local_path, is_main
+    'SELECT photo_id, restaurant_id, url, local_path, is_main, updated_at
      FROM restaurant_photos
      WHERE photo_id = ?'
 );
@@ -87,5 +87,6 @@ jsonOk([
         'url' => $row['url'],
         'local_path' => $row['local_path'],
         'is_main' => (int) $row['is_main'],
+        'updated_at' => $row['updated_at'],
     ],
 ]);

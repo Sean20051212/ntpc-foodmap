@@ -22,6 +22,23 @@ $pdo->beginTransaction();
 
 try {
     if ($restaurantId === null) {
+        $dup = $pdo->prepare('
+            SELECT restaurant_id FROM restaurants
+            WHERE restaurant_name = ?
+              AND (6371000 * 2 * ASIN(SQRT(
+                    POW(SIN(RADIANS(? - latitude) / 2), 2) +
+                    COS(RADIANS(?)) * COS(RADIANS(latitude)) *
+                    POW(SIN(RADIANS(? - longitude) / 2), 2)
+                  ))) < 50
+        ');
+        $dup->execute([
+            $restaurant['restaurant_name'],
+            $restaurant['latitude'], $restaurant['latitude'],
+            $restaurant['longitude'],
+        ]);
+        if ($dup->fetchColumn()) {
+            jsonErr('duplicate', '50 公尺內已有同名餐廳，請確認是否重複新增');
+        }
         $stmt = $pdo->prepare(
             'INSERT INTO restaurants
                 (restaurant_name, description, address, zipcode, latitude, longitude, price_level, google_place_id)

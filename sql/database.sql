@@ -221,6 +221,7 @@ CREATE TABLE `restaurant_photos` (
   `url` varchar(500) NOT NULL COMMENT '外部來源 URL（必填）',
   `local_path` varchar(500) DEFAULT NULL COMMENT '本機檔案相對路徑，由 sync_photos 下載後填入',
   `is_main` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`photo_id`),
   KEY `idx_photos_restaurant` (`restaurant_id`),
   CONSTRAINT `fk_photos_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE ON UPDATE CASCADE,

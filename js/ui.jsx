@@ -235,7 +235,7 @@ function Navbar({ me, onAuth }) {
   return <header className={"nav" + (route.path === "/explore" ? " nav-explore" : "")}>
     <div className="nav-inner">
       <div className="brand nav-brand" onClick={() => navigate("#/")}><span className="brand-mark">🍜</span><span>新北美食地圖</span></div>
-      {route.path !== "/explore" && <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>}
+      {route.path !== "/explore" && (route.path === "/" ? <div /> : <div className="nav-search" style={{ maxWidth: 520, width: "100%", justifySelf: "center" }}><SearchBar /></div>)}
       <div className="nav-avatar" ref={ref} style={{ position: "relative" }}>
         {me ? <Avatar name={me.username} onClick={() => setMenu(m => !m)} /> :
           <button className="btn btn-primary btn-sm" onClick={() => navigate("#/login")}>登入</button>}
