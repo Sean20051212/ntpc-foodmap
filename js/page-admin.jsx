@@ -141,7 +141,21 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   // currentId：新增模式下儲存後會被填入，使「照片管理」區塊在新增完立刻可用
   const [currentId, setCurrentId] = useState(editId);
+  const [geoState, setGeoState] = useState(null); // null | "loading" | "ok" | "out_of_ntpc" | "err"
   const set = (k, v) => setForm(s => ({ ...s, [k]: v }));
+
+  const geocodeFromAddress = async (address) => {
+    if (!address.trim()) return;
+    setGeoState("loading");
+    try {
+      const d = await api("POST", "/api/geo/geocode", { address });
+      if (!d.in_ntpc) { setGeoState("out_of_ntpc"); return; }
+      setForm(s => ({ ...s, latitude: d.lat, longitude: d.lng, zipcode: d.district.zipcode }));
+      setGeoState("ok");
+    } catch (e) {
+      setGeoState("err");
+    }
+  };
 
   useEffect(() => {
     if (!editId) return;
@@ -158,7 +172,7 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
           spec_rec: o.spec_rec,
         })),
       });
-      setPhotos(d.photos); setLoading(false);
+      setPhotos(d.photos); setLoading(false); setGeoState("ok");
     });
   }, [editId]);
 
@@ -234,16 +248,19 @@ function RestaurantForm({ dicts, editId, onClose, onSaved }) {
     {loading ? <Loading /> : <div className="col gap16">
       <div className="field"><label className="label">餐廳名稱</label><input className="input" value={form.restaurant_name} onChange={e => set("restaurant_name", e.target.value)} /></div>
       <div className="field"><label className="label">描述</label><textarea className="textarea" value={form.description} onChange={e => set("description", e.target.value)} /></div>
-      <div className="field"><label className="label">地址</label><input className="input" value={form.address} onChange={e => set("address", e.target.value)} /></div>
+      <div className="field">
+        <label className="label">地址</label>
+        <input className="input" value={form.address} onChange={e => { set("address", e.target.value); setGeoState(null); }} onBlur={e => geocodeFromAddress(e.target.value)} />
+        {geoState === "loading" && <div className="tiny muted" style={{ marginTop: 4 }}>定位中…</div>}
+        {geoState === "ok" && <div className="tiny" style={{ marginTop: 4, color: "var(--ok, #2a7)" }}>✓ {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)}</div>}
+        {geoState === "out_of_ntpc" && <div className="tiny" style={{ marginTop: 4, color: "#c83b30" }}>✗ 地址不在新北市範圍，請確認</div>}
+        {geoState === "err" && <div className="tiny" style={{ marginTop: 4, color: "#c83b30" }}>✗ 無法取得座標，請確認地址或 API key</div>}
+      </div>
       <div className="row gap16">
         <div className="field grow"><label className="label">區域 zipcode</label>
           <select className="select" value={form.zipcode} onChange={e => set("zipcode", e.target.value)}>{dicts.districts.map(d => <option key={d.zipcode} value={d.zipcode}>{d.district_name}（{d.zipcode}）</option>)}</select></div>
         <div className="field" style={{ width: 160 }}><label className="label">價位</label>
           <select className="select" value={form.price_level} onChange={e => set("price_level", +e.target.value)}>{(dicts.priceLevels || []).map(p => <option key={p.price_level_id} value={p.price_level_id}>{p.symbol} {p.label_zh}</option>)}</select></div>
-      </div>
-      <div className="row gap16">
-        <div className="field grow"><label className="label">緯度 latitude</label><input className="input tnum" type="number" step="0.0001" value={form.latitude} onChange={e => set("latitude", e.target.value)} /></div>
-        <div className="field grow"><label className="label">經度 longitude</label><input className="input tnum" type="number" step="0.0001" value={form.longitude} onChange={e => set("longitude", e.target.value)} /></div>
       </div>
       <div className="field"><label className="label">電話（逗號分隔）</label><input className="input" value={form.phones} onChange={e => set("phones", e.target.value)} placeholder="02-1234-5678, 0912-345-678" /></div>
       <div className="field"><label className="label">分類 tags</label>
